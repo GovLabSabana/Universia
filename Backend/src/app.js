@@ -9,6 +9,7 @@ import { sendError, sendSuccess } from "./utils/response.js";
 import universitiesRoutes from "./routes/universities.routes.js";
 import criteriaRoutes from "./routes/criteria.routes.js";
 import scoresRoutes from "./routes/scores.routes.js";
+import dashboardRoutes from "./routes/dashboard.routes.js";
 
 dotenv.config();
 
@@ -87,7 +88,7 @@ app.get("/", (req, res) => {
 app.use("/auth", authRoutes);
 app.use("/", protectedRoutes);
 
-
+app.use("/", dashboardRoutes);
 app.use("/", universitiesRoutes);
 app.use("/", criteriaRoutes);
 app.use("/", scoresRoutes);

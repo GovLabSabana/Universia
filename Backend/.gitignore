@@ -186,3 +186,5 @@ Instituciones.csv
 importUniversities.js
 importCriteria.js
 importScores.js
+
+.node_modules

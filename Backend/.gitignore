@@ -179,3 +179,10 @@ coverage/
 .local
 .cache/
 .claude
+
+# Archive that may contain sensitive data
+Instituciones.xlsx
+Instituciones.csv
+importUniversities.js
+importCriteria.js
+importScores.js

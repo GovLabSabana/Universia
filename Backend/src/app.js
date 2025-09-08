@@ -6,6 +6,9 @@ import { readFileSync } from "fs";
 import authRoutes from "./routes/auth.routes.js";
 import protectedRoutes from "./routes/protected.routes.js";
 import { sendError, sendSuccess } from "./utils/response.js";
+import universitiesRoutes from "./routes/universities.routes.js";
+import criteriaRoutes from "./routes/criteria.routes.js";
+import scoresRoutes from "./routes/scores.routes.js";
 
 dotenv.config();
 
@@ -84,6 +87,11 @@ app.get("/", (req, res) => {
 app.use("/auth", authRoutes);
 app.use("/", protectedRoutes);
 
+
+app.use("/", universitiesRoutes);
+app.use("/", criteriaRoutes);
+app.use("/", scoresRoutes);
+
 if (swaggerDocument) {
   app.use(
     "/docs",
@@ -95,6 +103,7 @@ if (swaggerDocument) {
     })
   );
 }
+
 
 app.use("*", (req, res) => {
   sendError(res, "NOT_FOUND", `Route ${req.originalUrl} not found`, 404);
@@ -109,6 +118,7 @@ app.use((error, req, res, next) => {
 
   sendError(res, "INTERNAL_ERROR", "Internal server error");
 });
+
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

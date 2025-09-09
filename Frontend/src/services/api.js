@@ -48,18 +48,14 @@ export const authAPI = {
   
   // Registro
   register: (userData) => {
-    return api.post('/auth/register', userData)
+    return api.post('/auth/signup', userData)
   },
   
   // Obtener perfil del usuario
   getProfile: () => {
-    return api.get('/profile')
+    return api.get('/auth/user')
   },
   
-  // Refresh token (si está implementado en el backend)
-  refreshToken: () => {
-    return api.post('/auth/refresh')
-  },
   
   // Logout (si está implementado en el backend)
   logout: () => {

@@ -23,12 +23,12 @@ export default function Dashboard() {
   })
   
   const [universities, setUniversities] = useState([
-    { id: 1, name: 'Universidad Nacional', city: 'Bogotá', department: 'Cundinamarca' },
+    { id: 1, name: 'Universidad Sabana', city: 'Chía', department: 'Cundinamarca' },
     { id: 2, name: 'Universidad de Antioquia', city: 'Medellín', department: 'Antioquia' }
   ])
   
   const [scores, setScores] = useState([
-    { id: 1, university: 'Universidad Nacional', criterion: 'Sostenibilidad', score: 4, comment: 'aaaaaaa' },
+    { id: 1, university: 'Universidad Sabana', criterion: 'Sostenibilidad', score: 4, comment: 'aaaaaaa' },
     { id: 2, university: 'Universidad de Antioquia', criterion: 'Calidad Académica', score: 5, comment: 'bbbbbb' }
   ])
 

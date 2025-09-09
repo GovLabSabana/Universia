@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { LogOut, User, Settings, Bell, Home } from 'lucide-react'
+import { LogOut, User, Settings, Home, Plus } from 'lucide-react'
 
 export default function Dashboard() {
   const { user, logout } = useAuth()
@@ -10,8 +10,13 @@ export default function Dashboard() {
     logout()
   }
 
+  const getUserNameFromEmail = (email) => {
+    if (!email) return 'Usuario'
+    return email.split('@')[0]
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -33,25 +38,24 @@ export default function Dashboard() {
                 <div className="h-8 w-8 bg-primary-100 rounded-full flex items-center justify-center">
                   <User className="h-5 w-5 text-primary-600" />
                 </div>
-                <span className="font-medium">{user?.name || user?.email}</span>
+                <span className="font-medium">
+                  {getUserNameFromEmail(user?.email)}
+                </span>
               </button>
 
               {/* Dropdown Menu */}
               {showUserMenu && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50 border">
                   <div className="px-4 py-2 border-b">
-                    <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {getUserNameFromEmail(user?.email)}
+                    </p>
                     <p className="text-sm text-gray-500">{user?.email}</p>
                   </div>
                   
                   <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center">
                     <Settings className="h-4 w-4 mr-3" />
                     Configuración
-                  </button>
-                  
-                  <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center">
-                    <Bell className="h-4 w-4 mr-3" />
-                    Notificaciones
                   </button>
                   
                   <div className="border-t">
@@ -71,48 +75,31 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            ¡Bienvenido, {user?.name || 'Usuario'}!
-          </h2>
-          <p className="text-gray-600">
-            Has iniciado sesión exitosamente en Universia
-          </p>
-        </div>
+      <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8">
+        {/* Bienvenida */}
+        <h2 className="text-2xl font-bold text-gray-800 mb-10" >
+          ! Bienvenido {getUserNameFromEmail(user?.email)}!
+        </h2>
 
-
-        {/* Content Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* User Info Card */}
-          <div className="bg-white p-6 rounded-xl shadow-sm border">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Información del Usuario</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium text-gray-600">Nombre:</label>
-                <p className="text-gray-900">{user?.name || 'No disponible'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-600">Email:</label>
-                <p className="text-gray-900">{user?.email}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-600">ID:</label>
-                <p className="text-gray-900 font-mono text-sm">{user?.id || 'No disponible'}</p>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-600">Fecha de registro:</label>
-                <p className="text-gray-900">
-                  {user?.created_at 
-                    ? new Date(user.created_at).toLocaleDateString('es-ES')
-                    : 'No disponible'
-                  }
-                </p>
-              </div>
-            </div>
+        {/* Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Card Crear */}
+          <div
+            onClick={() => alert('Ir a crear universidad')}
+            className="w-64 h-64 bg-white rounded-3xl shadow-md hover:shadow-lg transition cursor-pointer flex flex-col items-center justify-center border-2 border-blue-300 hover:border-primary-500"
+          >
+            <Plus className="h-16 w-16 text-primary-600" />
+            <p className="mt-4 text-xl font-semibold text-gray-800">Crear</p>
           </div>
 
+          {/* Card Puntos */}
+          <div
+            onClick={() => alert('Ir a puntajes')}
+            className="w-64 h-64 bg-white rounded-3xl shadow-md hover:shadow-lg transition cursor-pointer flex flex-col items-center justify-center border-2 border-yellow-200 hover:border-yellow-500"
+          >
+            <span className="text-5xl font-bold text-yellow-600">400</span>
+            <p className="mt-4 text-xl font-semibold text-gray-800">Puntos</p>
+          </div>
         </div>
       </main>
     </div>

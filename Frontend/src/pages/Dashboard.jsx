@@ -1,10 +1,36 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { LogOut, User, Settings, Home, Plus } from 'lucide-react'
+import { LogOut, User, Settings, Home, Plus, X, Star, MapPin, Building2 } from 'lucide-react'
+import "../design/Dashboard.css"
 
 export default function Dashboard() {
   const { user, logout } = useAuth()
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [showScoreForm, setShowScoreForm] = useState(false)
+  
+  const [newUniversity, setNewUniversity] = useState({
+    name: '',
+    city: '',
+    department: ''
+  })
+  
+  const [scoreForm, setScoreForm] = useState({
+    university_id: '',
+    criterion_id: '',
+    score: '',
+    comment: ''
+  })
+  
+  const [universities, setUniversities] = useState([
+    { id: 1, name: 'Universidad Nacional', city: 'Bogotá', department: 'Cundinamarca' },
+    { id: 2, name: 'Universidad de Antioquia', city: 'Medellín', department: 'Antioquia' }
+  ])
+  
+  const [scores, setScores] = useState([
+    { id: 1, university: 'Universidad Nacional', criterion: 'Sostenibilidad', score: 4, comment: 'Muy buena gestión ambiental' },
+    { id: 2, university: 'Universidad de Antioquia', criterion: 'Calidad Académica', score: 5, comment: 'Excelente programa de ingeniería' }
+  ])
 
   const handleLogout = () => {
     logout()
@@ -15,55 +41,97 @@ export default function Dashboard() {
     return email.split('@')[0]
   }
 
+  const handleCreateUniversity = () => {
+    if (!newUniversity.name || !newUniversity.city || !newUniversity.department) {
+      alert('Por favor completa todos los campos obligatorios')
+      return
+    }
+
+    const newUni = {
+      id: universities.length + 1,
+      ...newUniversity
+    }
+    setUniversities([...universities, newUni])
+    setNewUniversity({ name: '', city: '', department: '' })
+    setShowCreateForm(false)
+  }
+
+  const handleCreateScore = () => {
+    if (!scoreForm.university_id || !scoreForm.score) {
+      alert('Por favor selecciona una universidad y una puntuación')
+      return
+    }
+
+    const newScore = {
+      id: scores.length + 1,
+      university: universities.find(u => u.id === parseInt(scoreForm.university_id))?.name || 'Universidad',
+      criterion: 'Criterio de evaluación',
+      score: parseInt(scoreForm.score),
+      comment: scoreForm.comment
+    }
+    setScores([...scores, newScore])
+    setScoreForm({ university_id: '', criterion_id: '', score: '', comment: '' })
+    setShowScoreForm(false)
+  }
+
+  const renderStars = (score) => {
+    return Array.from({ length: 5 }, (_, i) => (
+      <Star 
+        key={i} 
+        className={`star ${i < score ? 'star-filled' : 'star-empty'}`}
+      />
+    ))
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="dashboard-container">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
+      <header className="header">
+        <div className="header-content">
+          <div className="header-nav">
             {/* Logo */}
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-primary-500 rounded-lg flex items-center justify-center">
-                <Home className="h-5 w-5 text-white" />
+            <div className="logo-container">
+              <div className="logo-icon">
+                <Home />
               </div>
-              <h1 className="ml-3 text-xl font-bold text-gray-900">Universia</h1>
+              <h1 className="logo-text">Universia</h1>
             </div>
 
             {/* User Menu */}
-            <div className="relative">
+            <div className="user-menu">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center space-x-3 text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-lg p-2"
+                className="user-button"
               >
-                <div className="h-8 w-8 bg-primary-100 rounded-full flex items-center justify-center">
-                  <User className="h-5 w-5 text-primary-600" />
+                <div className="user-avatar">
+                  <User />
                 </div>
-                <span className="font-medium">
+                <span className="user-name">
                   {getUserNameFromEmail(user?.email)}
                 </span>
               </button>
 
               {/* Dropdown Menu */}
               {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50 border">
-                  <div className="px-4 py-2 border-b">
-                    <p className="text-sm font-medium text-gray-900">
+                <div className="dropdown-menu">
+                  <div className="dropdown-header">
+                    <p className="dropdown-username">
                       {getUserNameFromEmail(user?.email)}
                     </p>
-                    <p className="text-sm text-gray-500">{user?.email}</p>
+                    <p className="dropdown-email">{user?.email}</p>
                   </div>
                   
-                  <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center">
-                    <Settings className="h-4 w-4 mr-3" />
+                  <button className="dropdown-button">
+                    <Settings />
                     Configuración
                   </button>
                   
-                  <div className="border-t">
+                  <div className="dropdown-logout">
                     <button 
                       onClick={handleLogout}
-                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
+                      className="dropdown-button"
                     >
-                      <LogOut className="h-4 w-4 mr-3" />
+                      <LogOut />
                       Cerrar sesión
                     </button>
                   </div>
@@ -74,31 +142,231 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8">
-        {/* Bienvenida */}
-        <h2 className="text-2xl font-bold text-gray-800 mb-10" >
-          ! Bienvenido {getUserNameFromEmail(user?.email)}!
-        </h2>
-
-        {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Card Crear */}
-          <div
-            onClick={() => alert('Ir a crear universidad')}
-            className="w-64 h-64 bg-white rounded-3xl shadow-md hover:shadow-lg transition cursor-pointer flex flex-col items-center justify-center border-2 border-blue-300 hover:border-primary-500"
-          >
-            <Plus className="h-16 w-16 text-primary-600" />
-            <p className="mt-4 text-xl font-semibold text-gray-800">Crear</p>
+      <main className="main-content">
+        <div className="container">
+          <div className="welcome-section">
+            <h2 className="welcome-title">
+              ¡Bienvenido {getUserNameFromEmail(user?.email)}!
+            </h2>
+            <p className="welcome-subtitle">Gestiona universidades y evalúa su calidad académica</p>
           </div>
 
-          {/* Card Puntos */}
-          <div
-            onClick={() => alert('Ir a puntajes')}
-            className="w-64 h-64 bg-white rounded-3xl shadow-md hover:shadow-lg transition cursor-pointer flex flex-col items-center justify-center border-2 border-yellow-200 hover:border-yellow-500"
-          >
-            <span className="text-5xl font-bold text-yellow-600">400</span>
-            <p className="mt-4 text-xl font-semibold text-gray-800">Puntos</p>
+          <div className="action-buttons">
+            <button
+              onClick={() => setShowCreateForm(!showCreateForm)}
+              className="action-button create-button"
+            >
+              <Plus />
+              {showCreateForm ? 'Cancelar Creación' : 'Crear Universidad'}
+            </button>
+            
+            <button
+              onClick={() => setShowScoreForm(!showScoreForm)}
+              className="action-button score-button"
+            >
+              <Star />
+              {showScoreForm ? 'Cancelar Puntuación' : 'Añadir Puntuación'}
+            </button>
+          </div>
+
+          {showCreateForm && (
+            <div className="form-container">
+              <div className="form-header">
+                <h3 className="form-title">Crear Nueva Universidad</h3>
+                <button
+                  onClick={() => setShowCreateForm(false)}
+                  className="close-button"
+                >
+                  <X />
+                </button>
+              </div>
+              
+              <div className="form-grid form-grid-3">
+                <div className="form-group">
+                  <label className="form-label">
+                    Nombre de la Universidad *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newUniversity.name}
+                    onChange={(e) => setNewUniversity({...newUniversity, name: e.target.value})}
+                    className="form-input"
+                    placeholder="Ej: Universidad Nacional"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label">
+                    Ciudad *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newUniversity.city}
+                    onChange={(e) => setNewUniversity({...newUniversity, city: e.target.value})}
+                    className="form-input"
+                    placeholder="Ej: Bogotá"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label">
+                    Departamento *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newUniversity.department}
+                    onChange={(e) => setNewUniversity({...newUniversity, department: e.target.value})}
+                    className="form-input"
+                    placeholder="Ej: Cundinamarca"
+                  />
+                </div>
+                
+                <div className="form-footer form-footer-span">
+                  <button
+                    onClick={handleCreateUniversity}
+                    className="submit-button create-submit"
+                  >
+                    Crear Universidad
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showScoreForm && (
+            <div className="form-container">
+              <div className="form-header">
+                <h3 className="form-title">Añadir Puntuación</h3>
+                <button
+                  onClick={() => setShowScoreForm(false)}
+                  className="close-button"
+                >
+                  <X />
+                </button>
+              </div>
+              
+              <div className="form-grid form-grid-2">
+                <div className="form-group">
+                  <label className="form-label">
+                    Universidad *
+                  </label>
+                  <select
+                    required
+                    value={scoreForm.university_id}
+                    onChange={(e) => setScoreForm({...scoreForm, university_id: e.target.value})}
+                    className="form-select score-focus"
+                  >
+                    <option value="">Seleccionar universidad</option>
+                    {universities.map(uni => (
+                      <option key={uni.id} value={uni.id}>{uni.name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label">
+                    Puntuación (1-5) *
+                  </label>
+                  <select
+                    required
+                    value={scoreForm.score}
+                    onChange={(e) => setScoreForm({...scoreForm, score: e.target.value})}
+                    className="form-select score-focus"
+                  >
+                    <option value="">Seleccionar puntuación</option>
+                    {[1, 2, 3, 4, 5].map(num => (
+                      <option key={num} value={num}>{num} estrella{num > 1 ? 's' : ''}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="form-group form-footer-span-2">
+                  <label className="form-label">
+                    Comentario
+                  </label>
+                  <textarea
+                    value={scoreForm.comment}
+                    onChange={(e) => setScoreForm({...scoreForm, comment: e.target.value})}
+                    className="form-textarea score-focus"
+                    placeholder="Escribe tu evaluación sobre esta universidad..."
+                    rows={3}
+                  />
+                </div>
+                
+                <div className="form-footer form-footer-span-2">
+                  <button
+                    onClick={handleCreateScore}
+                    className="submit-button score-submit"
+                  >
+                    Añadir Puntuación
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="content-grid">
+            <div className="content-card">
+              <h3 className="card-header">
+                <Building2 className="universities-icon" />
+                Universidades ({universities.length})
+              </h3>
+              
+              <div className="card-list">
+                {universities.map(uni => (
+                  <div key={uni.id} className="list-item">
+                    <h4 className="university-name">{uni.name}</h4>
+                    <p className="university-location">
+                      <MapPin />
+                      {uni.city}, {uni.department}
+                    </p>
+                  </div>
+                ))}
+                
+                {universities.length === 0 && (
+                  <div className="empty-state">
+                    <Building2 className="empty-icon" />
+                    <p className="empty-title">No hay universidades registradas</p>
+                    <p className="empty-subtitle">Haz clic en "Crear Universidad" para agregar la primera</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="content-card">
+              <h3 className="card-header">
+                <Star className="scores-icon" />
+                Puntuaciones ({scores.length})
+              </h3>
+              
+              <div className="card-list">
+                {scores.map(score => (
+                  <div key={score.id} className="list-item">
+                    <div className="score-header">
+                      <h4 className="score-university">{score.university}</h4>
+                      <div className="score-stars">
+                        {renderStars(score.score)}
+                      </div>
+                    </div>
+                    <p className="score-criterion">{score.criterion}</p>
+                    {score.comment && (
+                      <p className="score-comment">"{score.comment}"</p>
+                    )}
+                  </div>
+                ))}
+                
+                {scores.length === 0 && (
+                  <div className="empty-state">
+                    <Star className="empty-icon" />
+                    <p className="empty-title">No hay puntuaciones registradas</p>
+                    <p className="empty-subtitle">Haz clic en "Añadir Puntuación" para agregar la primera</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </main>

@@ -58,3 +58,47 @@ export const getDashboard = async (req, res) => {
     sendError(res, "INTERNAL_ERROR", "Error generating dashboard");
   }
 };
+/**
+ * @swagger
+ * /dashboard:
+ *   get:
+ *     tags:
+ *       - Dashboard
+ *     summary: Get dashboard statistics
+ *     description: Returns aggregated statistics like total universities, criteria averages, and ranking
+ *     responses:
+ *       200:
+ *         description: Dashboard statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     totalUniversities:
+ *                       type: integer
+ *                     criteriaAverages:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           criterion:
+ *                             type: string
+ *                           average:
+ *                             type: string
+ *                     ranking:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           university:
+ *                             type: string
+ *                           average:
+ *                             type: string
+ */

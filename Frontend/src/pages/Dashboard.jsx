@@ -28,8 +28,8 @@ export default function Dashboard() {
   ])
   
   const [scores, setScores] = useState([
-    { id: 1, university: 'Universidad Nacional', criterion: 'Sostenibilidad', score: 4, comment: 'Muy buena gestión ambiental' },
-    { id: 2, university: 'Universidad de Antioquia', criterion: 'Calidad Académica', score: 5, comment: 'Excelente programa de ingeniería' }
+    { id: 1, university: 'Universidad Nacional', criterion: 'Sostenibilidad', score: 4, comment: 'aaaaaaa' },
+    { id: 2, university: 'Universidad de Antioquia', criterion: 'Calidad Académica', score: 5, comment: 'bbbbbb' }
   ])
 
   const handleLogout = () => {

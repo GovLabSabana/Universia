@@ -15,6 +15,42 @@ export const getUniversities = async (req, res) => {
     sendError(res, "INTERNAL_ERROR", "Internal server error");
   }
 };
+/**
+ * @swagger
+ * /universities:
+ *   get:
+ *     tags:
+ *       - Universities
+ *     summary: Get all universities
+ *     description: Retrieve the list of all universities
+ *     responses:
+ *       200:
+ *         description: List of universities
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Universities retrieved successfully
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       name:
+ *                         type: string
+ *                       city:
+ *                         type: string
+ *                       department:
+ *                         type: string
+ */
 
 export const createUniversity = async (req, res) => {
   try {
@@ -40,8 +76,43 @@ export const createUniversity = async (req, res) => {
     sendError(res, "INTERNAL_ERROR", "Internal server error");
   }
 };
+
+/**
+ * @swagger
+ * /universities:
+ *   post:
+ *     tags:
+ *       - Universities
+ *     summary: Create a university
+ *     description: Add a new university
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - city
+ *               - department
+ *             properties:
+ *               name:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               department:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: University created
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SuccessResponse'
+ */
+
 export const searchUniversities = async (req, res) => {
-  const { q } = req.query; // palabra clave
+  const { q } = req.query; 
   try {
     if (!q) {
       return sendError(res, "VALIDATION_ERROR", "Query parameter 'q' is required", 400);

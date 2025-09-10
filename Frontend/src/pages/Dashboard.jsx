@@ -636,7 +636,7 @@ export default function Dashboard() {
                     >
                       <option value="">Todas las universidades</option>
                       {universities.map(uni => (
-                        <option key={uni.id} value={uni.name}>{uni.name}</option>
+                        <option key={uni.id} value={uni.name}>{uni.name} Sede {uni.city}</option>
                       ))}
                     </select>
                   </div>

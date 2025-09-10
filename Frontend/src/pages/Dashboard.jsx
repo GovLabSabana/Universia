@@ -1,17 +1,23 @@
 import { useState, useEffect } from 'react'
 import { universityAPI } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
-import { LogOut, User, Settings, Home, Plus, X, Star, MapPin, Building2, Leaf, Users, Shield, ChevronDown, ChevronUp, Filter, Eye, Calendar, MessageSquare, FileText, Search } from 'lucide-react'
+import { LogOut, User, Settings, Home, Plus, X, Star, MapPin, Building2, Leaf, Users, Shield, ChevronDown, ChevronUp, Filter, Eye, Calendar, MessageSquare, FileText, Search, ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react'
 import "../design/Dashboard.css"
 
 export default function Dashboard() {
   const { user, logout } = useAuth()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showCreateForm, setShowCreateForm] = useState(false)
-  const [showScoreForm, setShowScoreForm] = useState(false)
-  const [selectedDimension, setSelectedDimension] = useState('')
-  const [selectedCriterion, setSelectedCriterion] = useState('')
-  const [expandedEvaluations, setExpandedEvaluations] = useState({})
+  
+  // Estados para evaluación secuencial
+  const [universitySearchTerm, setUniversitySearchTerm] = useState('')
+  const [showUniversityDropdown, setShowUniversityDropdown] = useState(false)
+  const [selectedUniversityId, setSelectedUniversityId] = useState('')
+  const [userUniversity, setUserUniversity] = useState(null)
+  const [currentEvaluationIndex, setCurrentEvaluationIndex] = useState(0)
+  const [evaluationSequence, setEvaluationSequence] = useState([])
+  const [isEvaluationMode, setIsEvaluationMode] = useState(false)
+  const [completedEvaluations, setCompletedEvaluations] = useState([])
   
   // Estados para el filtro de búsqueda general
   const [searchTerm, setSearchTerm] = useState('')
@@ -25,13 +31,21 @@ export default function Dashboard() {
   })
   
   const [evaluationForm, setEvaluationForm] = useState({
-    university_id: '',
-    dimension: '',
-    criterion: '',
     score: '',
     evidence: '',
     comment: ''
   })
+
+  const getFilteredUniversitiesForSelection = () => {
+    if (!universitySearchTerm.trim()) return []
+    
+    const searchLower = universitySearchTerm.toLowerCase().trim()
+    return universities.filter(uni => 
+      uni.name.toLowerCase().includes(searchLower) ||
+      uni.city.toLowerCase().includes(searchLower) ||
+      uni.department.toLowerCase().includes(searchLower)
+    ).slice(0, 5) 
+  }
   
   const [universities, setUniversities] = useState([])
 
@@ -122,59 +136,93 @@ export default function Dashboard() {
     4: { label: 'Consolidado', description: 'Implementación integral con seguimiento', color: 'text-blue-600', bgColor: 'bg-blue-50' },
     5: { label: 'Excelente/Referente', description: 'Implementación ejemplar con resultados medibles', color: 'text-green-600', bgColor: 'bg-green-50' }
   }
-  
-  const [evaluations, setEvaluations] = useState([
-    { 
-      id: 1, 
-      university: 'Universidad Sabana', 
-      dimension: 'Ambiental',
-      criterion: 'Uso de energías renovables', 
-      score: 4, 
-      evidence: 'Paneles solares en 3 edificios principales, sistema de calentamiento solar para piscinas y algunas áreas comunes. Plan de expansión para 2025.',
-      comment: 'Buena implementación con planes de expansión. Se recomienda acelerar la instalación en más edificios.',
-      date: '2024-01-15'
-    },
-    { 
-      id: 2, 
-      university: 'Universidad de Antioquia', 
-      dimension: 'Social',
-      criterion: 'Programas de apoyo para estudiantes de escasos recursos', 
-      score: 5, 
-      evidence: 'Programa integral de becas que cubre el 35% de la población estudiantil, subsidios de alimentación, transporte y material académico.',
-      comment: 'Excelente cobertura y seguimiento de estudiantes. Modelo a seguir por otras instituciones.',
-      date: '2024-01-10'
-    },
-    { 
-      id: 3, 
-      university: 'Universidad Sabana', 
-      dimension: 'Gobernanza',
-      criterion: 'Plan o estrategia de sostenibilidad', 
-      score: 3, 
-      evidence: 'Plan estratégico 2024-2027 incluye metas de sostenibilidad, pero implementación parcial.',
-      comment: 'Falta mayor integración entre las diferentes áreas y seguimiento de indicadores.',
-      date: '2024-01-12'
-    },
-    { 
-      id: 4, 
-      university: 'Universidad Nacional', 
-      dimension: 'Ambiental',
-      criterion: 'Gestión de residuos sólidos y peligrosos', 
-      score: 5, 
-      evidence: 'Sistema completo de separación, reciclaje y disposición final. Centro de acopio y convenios con empresas especializadas.',
-      comment: 'Implementación ejemplar con excelentes resultados medibles y programas de educación.',
-      date: '2024-01-08'
-    },
-    { 
-      id: 5, 
-      university: 'Universidad Nacional', 
-      dimension: 'Social',
-      criterion: 'Políticas de respeto por los derechos humanos', 
-      score: 4, 
-      evidence: 'Política integral de DDHH, oficina especializada, protocolos claros y sistema de quejas.',
-      comment: 'Buena implementación, se recomienda fortalecer la divulgación y capacitación continua.',
-      date: '2024-01-05'
+
+  // Función para generar la secuencia de evaluación
+  const generateEvaluationSequence = () => {
+    const sequence = []
+    if (!userUniversity) return sequence
+    
+    // Solo generar para la universidad seleccionada
+    Object.entries(evaluationDimensions).forEach(([dimension, config]) => {
+      config.criteria.forEach(criterion => {
+        sequence.push({
+          university: userUniversity,
+          dimension: dimension,
+          criterion: criterion
+        })
+      })
+    })
+    return sequence
+  }
+
+  // Función para iniciar evaluación secuencial
+  const startSequentialEvaluation = () => {
+    if (universities.length === 0) {
+      alert('Primero debes crear al menos una universidad para evaluar')
+      return
     }
-  ])
+    
+    const sequence = generateEvaluationSequence()
+    setEvaluationSequence(sequence)
+    setCurrentEvaluationIndex(0)
+    setIsEvaluationMode(true)
+    setEvaluationForm({ score: '', evidence: '', comment: '' })
+  }
+
+  // Función para guardar evaluación actual y continuar
+  const saveCurrentEvaluation = () => {
+    if (!evaluationForm.score) {
+      alert('Por favor asigna una puntuación antes de continuar')
+      return
+    }
+
+    const currentItem = evaluationSequence[currentEvaluationIndex]
+    const newEvaluation = {
+      id: completedEvaluations.length + 1,
+      university: currentItem.university.name,
+      dimension: currentItem.dimension,
+      criterion: currentItem.criterion,
+      score: parseInt(evaluationForm.score),
+      evidence: evaluationForm.evidence,
+      comment: evaluationForm.comment,
+      date: new Date().toISOString().split('T')[0]
+    }
+
+    setCompletedEvaluations([...completedEvaluations, newEvaluation])
+    
+    // Limpiar formulario
+    setEvaluationForm({ score: '', evidence: '', comment: '' })
+    
+    // Avanzar al siguiente criterio
+    if (currentEvaluationIndex < evaluationSequence.length - 1) {
+      setCurrentEvaluationIndex(currentEvaluationIndex + 1)
+    } else {
+      // Evaluación completada
+      alert('¡Evaluación secuencial completada!')
+      setIsEvaluationMode(false)
+      setCurrentEvaluationIndex(0)
+    }
+  }
+
+  // Función para ir al criterio anterior
+  const goToPreviousEvaluation = () => {
+    if (currentEvaluationIndex > 0) {
+      setCurrentEvaluationIndex(currentEvaluationIndex - 1)
+      setEvaluationForm({ score: '', evidence: '', comment: '' })
+    }
+  }
+
+  // Función para omitir criterio actual
+  const skipCurrentEvaluation = () => {
+    setEvaluationForm({ score: '', evidence: '', comment: '' })
+    
+    if (currentEvaluationIndex < evaluationSequence.length - 1) {
+      setCurrentEvaluationIndex(currentEvaluationIndex + 1)
+    } else {
+      alert('Has llegado al final de la evaluación')
+      setIsEvaluationMode(false)
+    }
+  }
 
   const handleLogout = () => {
     logout()
@@ -202,29 +250,6 @@ export default function Dashboard() {
     }
   }
 
-  const handleCreateEvaluation = () => {
-    if (!evaluationForm.university_id || !evaluationForm.dimension || !evaluationForm.criterion || !evaluationForm.score) {
-      alert('Por favor completa todos los campos obligatorios')
-      return
-    }
-
-    const newEvaluation = {
-      id: evaluations.length + 1,
-      university: universities.find(u => u.id === parseInt(evaluationForm.university_id))?.name || 'Universidad',
-      dimension: evaluationForm.dimension,
-      criterion: evaluationForm.criterion,
-      score: parseInt(evaluationForm.score),
-      evidence: evaluationForm.evidence,
-      comment: evaluationForm.comment,
-      date: new Date().toISOString().split('T')[0]
-    }
-    setEvaluations([...evaluations, newEvaluation])
-    setEvaluationForm({ university_id: '', dimension: '', criterion: '', score: '', evidence: '', comment: '' })
-    setSelectedDimension('')
-    setSelectedCriterion('')
-    setShowScoreForm(false)
-  }
-
   const renderStars = (score) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star 
@@ -237,7 +262,8 @@ export default function Dashboard() {
   // Función mejorada para calcular estadísticas de dimensión considerando todas las universidades
   const getDimensionStats = () => {
     const stats = {}
-    const totalUniversities = universities.length
+    const totalUniversities = userUniversity ? 1 : universities.length
+
     
     Object.keys(evaluationDimensions).forEach(dimension => {
       const totalCriteria = evaluationDimensions[dimension].criteria.length
@@ -246,7 +272,10 @@ export default function Dashboard() {
       const totalPossibleEvaluations = totalUniversities * totalCriteria
       
       // Obtener evaluaciones existentes para esta dimensión
-      const dimEvaluations = evaluations.filter(e => e.dimension === dimension)
+      const dimEvaluations = completedEvaluations.filter(e => 
+        e.dimension === dimension && 
+        (!userUniversity || e.university === userUniversity.name)
+      )
       
       // Calcular porcentaje de completitud
       const completionPercentage = totalPossibleEvaluations > 0 
@@ -259,7 +288,7 @@ export default function Dashboard() {
         : '0.0'
       
       // Contar universidades que tienen al menos una evaluación en esta dimensión
-      const universitiesEvaluated = new Set(dimEvaluations.map(e => e.university)).size
+      const universitiesEvaluated = userUniversity ? (dimEvaluations.length > 0 ? 1 : 0) : new Set(dimEvaluations.map(e => e.university)).size
       
       stats[dimension] = {
         count: dimEvaluations.length,
@@ -273,19 +302,12 @@ export default function Dashboard() {
     return stats
   }
 
-  const toggleEvaluationExpansion = (id) => {
-    setExpandedEvaluations(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }))
-  }
-
   // Función para filtrar contenido por término de búsqueda
   const getFilteredContent = () => {
     if (!searchTerm.trim()) {
       return {
         universities: universities,
-        evaluations: evaluations
+        evaluations: completedEvaluations
       }
     }
 
@@ -299,7 +321,7 @@ export default function Dashboard() {
     )
     
     // Filtrar evaluaciones (por universidad o criterio)
-    const filteredEvaluations = evaluations.filter(evaluation => 
+    const filteredEvaluations = completedEvaluations.filter(evaluation => 
       evaluation.university.toLowerCase().includes(searchLower) ||
       evaluation.dimension.toLowerCase().includes(searchLower) ||
       evaluation.criterion.toLowerCase().includes(searchLower)
@@ -329,6 +351,13 @@ export default function Dashboard() {
   }
 
   const { universities: filteredUniversities, evaluations: filteredEvaluations } = getFilteredContent()
+
+  // Calcular progreso total de evaluación
+  const getTotalProgress = () => {
+    const totalCriteria = evaluationSequence.length
+    const completedCount = completedEvaluations.length
+    return totalCriteria > 0 ? Math.round((completedCount / totalCriteria) * 100) : 0
+  }
 
   return (
     <div className="dashboard-container">
@@ -390,6 +419,31 @@ export default function Dashboard() {
             <p className="welcome-subtitle">Sistema de Evaluación de Sostenibilidad para Universidades Colombianas</p>
           </div>
 
+          {/* Progreso general de evaluación */}
+          {isEvaluationMode && (
+            <div className="evaluation-progress-section">
+              <div className="progress-card">
+                <h3 className="progress-title">Progreso de Evaluación</h3>
+                <div className="progress-info">
+                  <div className="progress-bar-container">
+                    <div className="progress-bar">
+                      <div 
+                        className="progress-fill" 
+                        style={{ width: `${(currentEvaluationIndex / evaluationSequence.length) * 100}%` }}
+                      ></div>
+                    </div>
+                    <span className="progress-text">
+                      {currentEvaluationIndex + 1} de {evaluationSequence.length} criterios
+                    </span>
+                  </div>
+                  <div className="completed-count">
+                    <CheckCircle className="completed-icon" />
+                    {completedEvaluations.length} evaluaciones completadas
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Estadísticas por dimensión mejoradas */}
           <div className="stats-grid">
@@ -444,42 +498,105 @@ export default function Dashboard() {
             </button>
             
             <button
-              onClick={() => setShowScoreForm(!showScoreForm)}
+              onClick={startSequentialEvaluation}
               className="action-button score-button"
+              disabled={isEvaluationMode || !userUniversity}
             >
               <Star />
-              {showScoreForm ? 'Cancelar Evaluación' : 'Nueva Evaluación'}
+              {!userUniversity ? 'Selecciona tu Universidad' : 
+              isEvaluationMode ? 'Evaluación en Curso' : 'Iniciar Evaluación Secuencial'}
             </button>
           </div>
-           {/* Barra de búsqueda general */}
-           <div className="search-section">
-            <div className="search-container">
-              <div className="search-input-wrapper">
-                <Search className="search-icon" />
-                <input
-                  type="text"
-                  placeholder="Buscar por universidad, dimensión, criterio, ciudad..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="search-input"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={clearSearch}
-                    className="search-clear"
-                    title="Limpiar búsqueda"
-                  >
-                    <X />
-                  </button>
+
+          {/* Barra de búsqueda general */}
+          {!isEvaluationMode && !userUniversity && (
+            <div className="university-selection-section">
+              <div className="selection-container">
+                <h3 className="selection-title">Selecciona tu Universidad</h3>
+                <p className="selection-subtitle">Busca y escoge la universidad a la que perteneces</p>
+                
+                <div className="university-search-wrapper">
+                  <div className="search-input-wrapper">
+                    <Search className="search-icon" />
+                    <input
+                      type="text"
+                      placeholder="Escribe el nombre de tu universidad o ciudad..."
+                      value={universitySearchTerm}
+                      onChange={(e) => {
+                        setUniversitySearchTerm(e.target.value)
+                        setShowUniversityDropdown(e.target.value.length > 0)
+                      }}
+                      onFocus={() => setShowUniversityDropdown(universitySearchTerm.length > 0)}
+                      className="university-search-input"
+                    />
+                    {universitySearchTerm && (
+                      <button
+                        onClick={() => {
+                          setUniversitySearchTerm('')
+                          setShowUniversityDropdown(false)
+                        }}
+                        className="search-clear"
+                      >
+                        <X />
+                      </button>
+                    )}
+                  </div>
+                  
+                  {showUniversityDropdown && (
+                    <div className="university-dropdown">
+                      {getFilteredUniversitiesForSelection().length > 0 ? (
+                        getFilteredUniversitiesForSelection().map(uni => (
+                          <button
+                            key={uni.id}
+                            onClick={() => {
+                              setUserUniversity(uni)
+                              setSelectedUniversityId(uni.id.toString())
+                              setUniversitySearchTerm(uni.name)
+                              setShowUniversityDropdown(false)
+                            }}
+                            className="university-option"
+                          >
+                            <div className="university-option-content">
+                              <h4 className="university-option-name">{uni.name}</h4>
+                              <p className="university-option-location">
+                                <MapPin className="location-icon-small" />
+                                {uni.city}, {uni.department}
+                              </p>
+                            </div>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="no-results">
+                          <p>No se encontraron universidades</p>
+                          <p className="no-results-hint">Intenta con otros términos de búsqueda</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {userUniversity && (
+                  <div className="selected-university-info">
+                    <h4>Universidad seleccionada:</h4>
+                    <div className="selected-university-card">
+                      <h5>{userUniversity.name}</h5>
+                      <p>{userUniversity.city}, {userUniversity.department}</p>
+                      <button
+                        onClick={() => {
+                          setUserUniversity(null)
+                          setSelectedUniversityId('')
+                          setUniversitySearchTerm('')
+                        }}
+                        className="change-university-btn"
+                      >
+                        Cambiar universidad
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
-              {searchTerm && (
-                <div className="search-results-summary">
-                  Encontrado: {filteredUniversities.length} universidades, {filteredEvaluations.length} evaluaciones
-                </div>
-              )}
             </div>
-          </div>
+          )}
 
           {showCreateForm && (
             <div className="form-container">
@@ -548,75 +665,52 @@ export default function Dashboard() {
             </div>
           )}
 
-          {showScoreForm && (
+          {/* Formulario de evaluación secuencial */}
+          {isEvaluationMode && evaluationSequence.length > 0 && (
             <div className="form-container">
               <div className="form-header">
-                <h3 className="form-title">Nueva Evaluación de Sostenibilidad</h3>
-                <button
-                  onClick={() => setShowScoreForm(false)}
+                <div>
+                  <h3 className="form-title">Evaluación Secuencial</h3>
+                  <p className="evaluation-progress-text">
+                    Criterio {currentEvaluationIndex + 1} de {evaluationSequence.length}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setIsEvaluationMode(false)} 
                   className="close-button"
+                  title="Salir de evaluación"
                 >
                   <X />
                 </button>
               </div>
               
-              <div className="evaluation-form">
-                <div className="form-grid form-grid-2">
-                  <div className="form-group">
-                    <label className="form-label">Universidad *</label>
-                    <select
-                      required
-                      value={evaluationForm.university_id}
-                      onChange={(e) => setEvaluationForm({...evaluationForm, university_id: e.target.value})}
-                      className="form-select"
-                    >
-                      <option value="">Seleccionar universidad</option>
-                      {universities.map(uni => (
-                        <option key={uni.id} value={uni.id}>{uni.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div className="form-group">
-                    <label className="form-label">Dimensión *</label>
-                    <select
-                      required
-                      value={evaluationForm.dimension}
-                      onChange={(e) => {
-                        setEvaluationForm({...evaluationForm, dimension: e.target.value, criterion: ''})
-                        setSelectedDimension(e.target.value)
-                        setSelectedCriterion('')
-                      }}
-                      className="form-select"
-                    >
-                      <option value="">Seleccionar dimensión</option>
-                      {Object.entries(evaluationDimensions).map(([dimension, config]) => (
-                        <option key={dimension} value={dimension}>{dimension}</option>
-                      ))}
-                    </select>
+              {/* Información del criterio actual */}
+              <div className="current-evaluation-info">
+                <div className="evaluation-context">
+                  <h4 className="current-university">{evaluationSequence[currentEvaluationIndex]?.university.name}</h4>
+                  <div className="current-location">
+                    <MapPin className="location-icon" />
+                    {evaluationSequence[currentEvaluationIndex]?.university.city}, {evaluationSequence[currentEvaluationIndex]?.university.department}
                   </div>
                 </div>
-
-                {selectedDimension && (
-                  <div className="form-group">
-                    <label className="form-label">Criterio *</label>
-                    <select
-                      required
-                      value={evaluationForm.criterion}
-                      onChange={(e) => {
-                        setEvaluationForm({...evaluationForm, criterion: e.target.value})
-                        setSelectedCriterion(e.target.value)
-                      }}
-                      className="form-select"
-                    >
-                      <option value="">Seleccionar criterio</option>
-                      {evaluationDimensions[selectedDimension].criteria.map(criterion => (
-                        <option key={criterion} value={criterion}>{criterion}</option>
-                      ))}
-                    </select>
+                
+                <div className="dimension-section">
+                  <div className={`current-dimension-badge ${evaluationDimensions[evaluationSequence[currentEvaluationIndex]?.dimension]?.color}`}>
+                    {evaluationDimensions[evaluationSequence[currentEvaluationIndex]?.dimension]?.icon}
+                    <span>{evaluationSequence[currentEvaluationIndex]?.dimension}</span>
                   </div>
-                )}
+                </div>
+                
+                <div className="criterion-section">
+                  <h5 className="criterion-label">Criterio a evaluar:</h5>
+                  <p className="current-criterion">
+                    {evaluationSequence[currentEvaluationIndex]?.criterion}
+                  </p>
+                </div>
+              </div>
 
+              <div className="evaluation-form">
+                {/* Puntuación */}
                 <div className="form-group">
                   <label className="form-label">Puntuación (1-5) *</label>
                   <div className="score-options">
@@ -666,161 +760,114 @@ export default function Dashboard() {
                   </div>
                 </div>
                 
-                <div className="form-footer">
-                  <button
-                    onClick={handleCreateEvaluation}
-                    className="submit-button score-submit"
-                  >
-                    Guardar Evaluación
-                  </button>
+                {/* Botones de navegación */}
+                <div className="evaluation-navigation">
+                  <div className="nav-buttons-left">
+                    <button
+                      onClick={goToPreviousEvaluation}
+                      className="nav-button secondary-button"
+                      disabled={currentEvaluationIndex === 0}
+                    >
+                      <ArrowLeft />
+                      Anterior
+                    </button>
+                    
+                    <button
+                      onClick={skipCurrentEvaluation}
+                      className="nav-button skip-button"
+                    >
+                      Omitir
+                    </button>
+                  </div>
+                  
+                  <div className="nav-buttons-right">
+                    <button
+                      onClick={saveCurrentEvaluation}
+                      className="nav-button primary-button"
+                    >
+                      {currentEvaluationIndex === evaluationSequence.length - 1 ? 'Finalizar' : 'Siguiente'}
+                      <ArrowRight />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          <div className="content-grid">
-            <div className="content-card">
-              <h3 className="card-header">
-                <Building2 className="universities-icon" />
-                Universidades ({filteredUniversities.length}{searchTerm && ` de ${universities.length}`})
-              </h3>
-              
-              <div className="card-list">
-                {filteredUniversities.map(uni => {
-                  // Calcular estadísticas específicas para esta universidad
-                  const uniEvaluations = evaluations.filter(e => e.university === uni.name)
-                  const totalCriteria = Object.values(evaluationDimensions).reduce((sum, dim) => sum + dim.criteria.length, 0)
-                  const completionPercentage = Math.round((uniEvaluations.length / totalCriteria) * 100)
+          {/* Contenido principal (solo visible cuando no está en modo evaluación) */}
+          {!isEvaluationMode && userUniversity &&(
+          <div className="content-card">
+          <h3 className="card-header">
+            <Building2 className="universities-icon" />
+            Mi Universidad
+          </h3>
+          
+          <div className="card-list">
+            {userUniversity && (
+              <div className="selected-university-display">
+                <div className="university-info-section">
+                  <h4 className="university-name">{userUniversity.name}</h4>
+                  <p className="university-location">
+                    <MapPin />
+                    {userUniversity.city}, {userUniversity.department}
+                  </p>
                   
-                  return (
-                    <div key={uni.id} className="list-item">
-                      <h4 className="university-name">{uni.name}</h4>
-                      <p className="university-location">
-                        <MapPin />
-                        {uni.city}, {uni.department}
-                      </p>
-                      
-                      <div className="university-completion">
-                        <div className="completion-bar-small">
-                          <div 
-                            className="completion-fill-small" 
-                            style={{ width: `${completionPercentage}%` }}
-                          ></div>
-                        </div>
-                        <span className="completion-text-small">
-                          {completionPercentage}% evaluado ({uniEvaluations.length}/{totalCriteria} criterios)
-                        </span>
-                      </div>
-                      
-                      <div className="university-stats">
-                        {Object.keys(evaluationDimensions).map(dimension => {
-                          const dimEvaluations = evaluations.filter(e => e.university === uni.name && e.dimension === dimension)
-                          const avgScore = dimEvaluations.length > 0 
-                            ? (dimEvaluations.reduce((sum, e) => sum + e.score, 0) / dimEvaluations.length).toFixed(1)
-                            : 'N/A'
-                          return (
-                            <div key={dimension} className="university-stat">
-                              <span className="stat-dimension">{dimension}:</span>
-                              <span className="stat-value">{avgScore}</span>
-                              <span className="stat-count">({dimEvaluations.length})</span>
-                            </div>
-                          )
-                        })}
-                      </div>
+                  <div className="university-completion">
+                    <div className="completion-bar-small">
+                      <div 
+                        className="completion-fill-small" 
+                        style={{ 
+                          width: `${Math.round((completedEvaluations.filter(e => e.university === userUniversity.name).length / 
+                            Object.values(evaluationDimensions).reduce((sum, dim) => sum + dim.criteria.length, 0)) * 100)}%` 
+                        }}
+                      ></div>
                     </div>
-                  )
-                })}
-                
-                {filteredUniversities.length === 0 && (
-                  <div className="empty-state">
-                    <Building2 className="empty-icon" />
-                    <p className="empty-title">
-                      {searchTerm ? 'No se encontraron universidades' : 'No hay universidades registradas'}
-                    </p>
-                    <p className="empty-subtitle">
-                      {searchTerm ? 'Intenta con otros términos de búsqueda' : 'Haz clic en "Crear Universidad" para agregar la primera'}
-                    </p>
+                    <span className="completion-text-small">
+                      {Math.round((completedEvaluations.filter(e => e.university === userUniversity.name).length / 
+                        Object.values(evaluationDimensions).reduce((sum, dim) => sum + dim.criteria.length, 0)) * 100)}% evaluado 
+                      ({completedEvaluations.filter(e => e.university === userUniversity.name).length}/
+                      {Object.values(evaluationDimensions).reduce((sum, dim) => sum + dim.criteria.length, 0)} criterios)
+                    </span>
                   </div>
-                )}
-              </div>
-            </div>
-
-            <div className="content-card">
-              <div className="evaluations-header">
-                <h3 className="card-header">
-                  <Star className="scores-icon" />
-                  Evaluaciones ({filteredEvaluations.length}{searchTerm && ` de ${evaluations.length}`})
-                </h3>
-              </div>
-              
-              <div className="evaluations-list">
-                {filteredEvaluations.map(evaluation => {
-                  const scoreConfig = scoreDescriptions[evaluation.score]
-                  const dimensionConfig = evaluationDimensions[evaluation.dimension]
                   
-                  return (
-                    <div key={evaluation.id} className="evaluation-card">
-                      <div className="evaluation-summary">
-                        <div className="evaluation-main-info">
-                          <h4 className="evaluation-university">{evaluation.university}</h4>
-                          <div className="evaluation-criterion-info">
-                            <span className={`dimension-badge ${dimensionConfig.color}`}>
-                              {dimensionConfig.icon}
-                              {evaluation.dimension}
-                            </span>
-                            <span className="criterion-name">{evaluation.criterion}</span>
-                          </div>
+                  <div className="university-stats">
+                    {Object.keys(evaluationDimensions).map(dimension => {
+                      const dimEvaluations = completedEvaluations.filter(e => 
+                        e.university === userUniversity.name && e.dimension === dimension
+                      )
+                      const avgScore = dimEvaluations.length > 0 
+                        ? (dimEvaluations.reduce((sum, e) => sum + e.score, 0) / dimEvaluations.length).toFixed(1)
+                        : 'N/A'
+                      return (
+                        <div key={dimension} className="university-stat">
+                          <span className="stat-dimension">{dimension}:</span>
+                          <span className="stat-value">{avgScore}</span>
+                          <span className="stat-count">({dimEvaluations.length})</span>
                         </div>
-                        
-                        <div className="evaluation-score-section">
-                          <div className="evaluation-score-badge">
-                            <span className={`score-badge ${scoreConfig.color}`}>
-                              {evaluation.score}/5
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => openEvaluationModal(evaluation)}
-                            className="view-details-button"
-                            title="Ver detalles completos"
-                          >
-                            <Eye />
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <div className="evaluation-preview">
-                        <div className="evaluation-stars-small">
-                          {renderStars(evaluation.score)}
-                        </div>
-                        <span className="evaluation-date-small">
-                          <Calendar />
-                          {evaluation.date}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-                
-                {filteredEvaluations.length === 0 && (
-                  <div className="empty-state">
-                    <Star className="empty-icon" />
-                    <p className="empty-title">
-                      {searchTerm 
-                        ? 'No se encontraron evaluaciones'
-                        : 'No hay evaluaciones registradas'
-                      }
-                    </p>
-                    <p className="empty-subtitle">
-                      {searchTerm 
-                        ? 'Intenta con otros términos de búsqueda'
-                        : 'Haz clic en "Nueva Evaluación" para agregar la primera'
-                      }
-                    </p>
+                      )
+                    })}
                   </div>
-                )}
+                </div>
+                
+                <div className="university-actions">
+                  <button
+                    onClick={() => {
+                      setUserUniversity(null)
+                      setSelectedUniversityId('')
+                      setUniversitySearchTerm('')
+                      setCompletedEvaluations([]) // Limpiar evaluaciones si cambia universidad
+                    }}
+                    className="change-university-button"
+                  >
+                    <X className="change-icon" />
+                    Cambiar Universidad
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
+        </div>
+          )}
         </div>
       </main>
 

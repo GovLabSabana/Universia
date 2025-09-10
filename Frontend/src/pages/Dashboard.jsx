@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { universityAPI } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
-import { LogOut, User, Settings, Home, Plus, X, Star, MapPin, Building2, Leaf, Users, Shield, ChevronDown, ChevronUp, Filter, Eye, Calendar, MessageSquare, FileText } from 'lucide-react'
+import { LogOut, User, Settings, Home, Plus, X, Star, MapPin, Building2, Leaf, Users, Shield, ChevronDown, ChevronUp, Filter, Eye, Calendar, MessageSquare, FileText, Search } from 'lucide-react'
 import "../design/Dashboard.css"
 
 export default function Dashboard() {
@@ -13,8 +13,8 @@ export default function Dashboard() {
   const [selectedCriterion, setSelectedCriterion] = useState('')
   const [expandedEvaluations, setExpandedEvaluations] = useState({})
   
-  // Nuevos estados para el filtrado y modal
-  const [selectedUniversityFilter, setSelectedUniversityFilter] = useState('')
+  // Estados para el filtro de búsqueda general
+  const [searchTerm, setSearchTerm] = useState('')
   const [showEvaluationModal, setShowEvaluationModal] = useState(false)
   const [selectedEvaluationForModal, setSelectedEvaluationForModal] = useState(null)
   
@@ -234,15 +234,40 @@ export default function Dashboard() {
     ))
   }
 
+  // Función mejorada para calcular estadísticas de dimensión considerando todas las universidades
   const getDimensionStats = () => {
     const stats = {}
-    Object.keys(evaluationDimensions).forEach(dim => {
-      const dimEvaluations = evaluations.filter(e => e.dimension === dim)
-      stats[dim] = {
+    const totalUniversities = universities.length
+    
+    Object.keys(evaluationDimensions).forEach(dimension => {
+      const totalCriteria = evaluationDimensions[dimension].criteria.length
+      
+      // Calcular total de criterios posibles (universidades × criterios por dimensión)
+      const totalPossibleEvaluations = totalUniversities * totalCriteria
+      
+      // Obtener evaluaciones existentes para esta dimensión
+      const dimEvaluations = evaluations.filter(e => e.dimension === dimension)
+      
+      // Calcular porcentaje de completitud
+      const completionPercentage = totalPossibleEvaluations > 0 
+        ? Math.round((dimEvaluations.length / totalPossibleEvaluations) * 100)
+        : 0
+      
+      // Calcular promedio de puntuación
+      const avgScore = dimEvaluations.length > 0 
+        ? (dimEvaluations.reduce((sum, e) => sum + e.score, 0) / dimEvaluations.length).toFixed(1)
+        : '0.0'
+      
+      // Contar universidades que tienen al menos una evaluación en esta dimensión
+      const universitiesEvaluated = new Set(dimEvaluations.map(e => e.university)).size
+      
+      stats[dimension] = {
         count: dimEvaluations.length,
-        avgScore: dimEvaluations.length > 0 
-          ? (dimEvaluations.reduce((sum, e) => sum + e.score, 0) / dimEvaluations.length).toFixed(1)
-          : 0
+        avgScore: avgScore,
+        completionPercentage: completionPercentage,
+        universitiesEvaluated: universitiesEvaluated,
+        totalCriteria: totalCriteria,
+        totalPossibleEvaluations: totalPossibleEvaluations
       }
     })
     return stats
@@ -255,10 +280,35 @@ export default function Dashboard() {
     }))
   }
 
-  // Función para filtrar evaluaciones por universidad
-  const getFilteredEvaluations = () => {
-    if (!selectedUniversityFilter) return evaluations
-    return evaluations.filter(evaluation => evaluation.university === selectedUniversityFilter)
+  // Función para filtrar contenido por término de búsqueda
+  const getFilteredContent = () => {
+    if (!searchTerm.trim()) {
+      return {
+        universities: universities,
+        evaluations: evaluations
+      }
+    }
+
+    const searchLower = searchTerm.toLowerCase().trim()
+    
+    // Filtrar universidades
+    const filteredUniversities = universities.filter(uni => 
+      uni.name.toLowerCase().includes(searchLower) ||
+      uni.city.toLowerCase().includes(searchLower) ||
+      uni.department.toLowerCase().includes(searchLower)
+    )
+    
+    // Filtrar evaluaciones (por universidad o criterio)
+    const filteredEvaluations = evaluations.filter(evaluation => 
+      evaluation.university.toLowerCase().includes(searchLower) ||
+      evaluation.dimension.toLowerCase().includes(searchLower) ||
+      evaluation.criterion.toLowerCase().includes(searchLower)
+    )
+    
+    return {
+      universities: filteredUniversities,
+      evaluations: filteredEvaluations
+    }
   }
 
   // Función para abrir modal de evaluación
@@ -272,6 +322,13 @@ export default function Dashboard() {
     setShowEvaluationModal(false)
     setSelectedEvaluationForModal(null)
   }
+
+  // Limpiar búsqueda
+  const clearSearch = () => {
+    setSearchTerm('')
+  }
+
+  const { universities: filteredUniversities, evaluations: filteredEvaluations } = getFilteredContent()
 
   return (
     <div className="dashboard-container">
@@ -308,11 +365,6 @@ export default function Dashboard() {
                     <p className="dropdown-email">{user?.email}</p>
                   </div>
                   
-                  <button className="dropdown-button">
-                    <Settings />
-                    Configuración
-                  </button>
-                  
                   <div className="dropdown-logout">
                     <button 
                       onClick={handleLogout}
@@ -338,7 +390,8 @@ export default function Dashboard() {
             <p className="welcome-subtitle">Sistema de Evaluación de Sostenibilidad para Universidades Colombianas</p>
           </div>
 
-          {/* Estadísticas por dimensión */}
+
+          {/* Estadísticas por dimensión mejoradas */}
           <div className="stats-grid">
             {Object.entries(evaluationDimensions).map(([dimension, config]) => {
               const stats = getDimensionStats()[dimension]
@@ -353,9 +406,28 @@ export default function Dashboard() {
                       <p className="stat-subtitle">{stats.count} evaluaciones</p>
                     </div>
                   </div>
-                  <div className="stat-score">
-                    <span className="stat-score-number">{stats.avgScore}</span>
-                    <span className="stat-score-text">Promedio</span>
+                  <div className="stat-metrics">
+                    <div className="stat-score">
+                      <span className="stat-score-number">{stats.avgScore}</span>
+                      <span className="stat-score-text">Promedio</span>
+                    </div>
+                    <div className="stat-completion">
+                      <div className="completion-bar">
+                        <div 
+                          className="completion-fill" 
+                          style={{ width: `${stats.completionPercentage}%` }}
+                        ></div>
+                      </div>
+                      <div className="completion-info">
+                        <span className="completion-percentage">{stats.completionPercentage}%</span>
+                        <span className="completion-text">Completado</span>
+                      </div>
+                    </div>
+                    <div className="stat-detail">
+                      <span className="detail-text">
+                        {stats.universitiesEvaluated}/{universities.length} universidades evaluadas
+                      </span>
+                    </div>
                   </div>
                 </div>
               )
@@ -378,6 +450,35 @@ export default function Dashboard() {
               <Star />
               {showScoreForm ? 'Cancelar Evaluación' : 'Nueva Evaluación'}
             </button>
+          </div>
+           {/* Barra de búsqueda general */}
+           <div className="search-section">
+            <div className="search-container">
+              <div className="search-input-wrapper">
+                <Search className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Buscar por universidad, dimensión, criterio, ciudad..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="search-input"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={clearSearch}
+                    className="search-clear"
+                    title="Limpiar búsqueda"
+                  >
+                    <X />
+                  </button>
+                )}
+              </div>
+              {searchTerm && (
+                <div className="search-results-summary">
+                  Encontrado: {filteredUniversities.length} universidades, {filteredEvaluations.length} evaluaciones
+                </div>
+              )}
+            </div>
           </div>
 
           {showCreateForm && (
@@ -581,39 +682,64 @@ export default function Dashboard() {
             <div className="content-card">
               <h3 className="card-header">
                 <Building2 className="universities-icon" />
-                Universidades ({universities.length})
+                Universidades ({filteredUniversities.length}{searchTerm && ` de ${universities.length}`})
               </h3>
               
               <div className="card-list">
-                {universities.map(uni => (
-                  <div key={uni.id} className="list-item">
-                    <h4 className="university-name">{uni.name}</h4>
-                    <p className="university-location">
-                      <MapPin />
-                      {uni.city}, {uni.department}
-                    </p>
-                    <div className="university-stats">
-                      {Object.keys(evaluationDimensions).map(dimension => {
-                        const dimEvaluations = evaluations.filter(e => e.university === uni.name && e.dimension === dimension)
-                        const avgScore = dimEvaluations.length > 0 
-                          ? (dimEvaluations.reduce((sum, e) => sum + e.score, 0) / dimEvaluations.length).toFixed(1)
-                          : 'N/A'
-                        return (
-                          <div key={dimension} className="university-stat">
-                            <span className="stat-dimension">{dimension}:</span>
-                            <span className="stat-value">{avgScore}</span>
-                          </div>
-                        )
-                      })}
+                {filteredUniversities.map(uni => {
+                  // Calcular estadísticas específicas para esta universidad
+                  const uniEvaluations = evaluations.filter(e => e.university === uni.name)
+                  const totalCriteria = Object.values(evaluationDimensions).reduce((sum, dim) => sum + dim.criteria.length, 0)
+                  const completionPercentage = Math.round((uniEvaluations.length / totalCriteria) * 100)
+                  
+                  return (
+                    <div key={uni.id} className="list-item">
+                      <h4 className="university-name">{uni.name}</h4>
+                      <p className="university-location">
+                        <MapPin />
+                        {uni.city}, {uni.department}
+                      </p>
+                      
+                      <div className="university-completion">
+                        <div className="completion-bar-small">
+                          <div 
+                            className="completion-fill-small" 
+                            style={{ width: `${completionPercentage}%` }}
+                          ></div>
+                        </div>
+                        <span className="completion-text-small">
+                          {completionPercentage}% evaluado ({uniEvaluations.length}/{totalCriteria} criterios)
+                        </span>
+                      </div>
+                      
+                      <div className="university-stats">
+                        {Object.keys(evaluationDimensions).map(dimension => {
+                          const dimEvaluations = evaluations.filter(e => e.university === uni.name && e.dimension === dimension)
+                          const avgScore = dimEvaluations.length > 0 
+                            ? (dimEvaluations.reduce((sum, e) => sum + e.score, 0) / dimEvaluations.length).toFixed(1)
+                            : 'N/A'
+                          return (
+                            <div key={dimension} className="university-stat">
+                              <span className="stat-dimension">{dimension}:</span>
+                              <span className="stat-value">{avgScore}</span>
+                              <span className="stat-count">({dimEvaluations.length})</span>
+                            </div>
+                          )
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
                 
-                {universities.length === 0 && (
+                {filteredUniversities.length === 0 && (
                   <div className="empty-state">
                     <Building2 className="empty-icon" />
-                    <p className="empty-title">No hay universidades registradas</p>
-                    <p className="empty-subtitle">Haz clic en "Crear Universidad" para agregar la primera</p>
+                    <p className="empty-title">
+                      {searchTerm ? 'No se encontraron universidades' : 'No hay universidades registradas'}
+                    </p>
+                    <p className="empty-subtitle">
+                      {searchTerm ? 'Intenta con otros términos de búsqueda' : 'Haz clic en "Crear Universidad" para agregar la primera'}
+                    </p>
                   </div>
                 )}
               </div>
@@ -623,28 +749,12 @@ export default function Dashboard() {
               <div className="evaluations-header">
                 <h3 className="card-header">
                   <Star className="scores-icon" />
-                  Evaluaciones ({getFilteredEvaluations().length})
+                  Evaluaciones ({filteredEvaluations.length}{searchTerm && ` de ${evaluations.length}`})
                 </h3>
-                
-                <div className="filter-section">
-                  <div className="filter-group">
-                    <Filter className="filter-icon" />
-                    <select
-                      value={selectedUniversityFilter}
-                      onChange={(e) => setSelectedUniversityFilter(e.target.value)}
-                      className="filter-select"
-                    >
-                      <option value="">Todas las universidades</option>
-                      {universities.map(uni => (
-                        <option key={uni.id} value={uni.name}>{uni.name} Sede {uni.city}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
               </div>
               
               <div className="evaluations-list">
-                {getFilteredEvaluations().map(evaluation => {
+                {filteredEvaluations.map(evaluation => {
                   const scoreConfig = scoreDescriptions[evaluation.score]
                   const dimensionConfig = evaluationDimensions[evaluation.dimension]
                   
@@ -691,18 +801,18 @@ export default function Dashboard() {
                   )
                 })}
                 
-                {getFilteredEvaluations().length === 0 && (
+                {filteredEvaluations.length === 0 && (
                   <div className="empty-state">
                     <Star className="empty-icon" />
                     <p className="empty-title">
-                      {selectedUniversityFilter 
-                        ? `No hay evaluaciones para ${selectedUniversityFilter}`
+                      {searchTerm 
+                        ? 'No se encontraron evaluaciones'
                         : 'No hay evaluaciones registradas'
                       }
                     </p>
                     <p className="empty-subtitle">
-                      {selectedUniversityFilter 
-                        ? 'Selecciona otra universidad o crea una nueva evaluación'
+                      {searchTerm 
+                        ? 'Intenta con otros términos de búsqueda'
                         : 'Haz clic en "Nueva Evaluación" para agregar la primera'
                       }
                     </p>

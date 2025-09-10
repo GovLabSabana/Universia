@@ -121,7 +121,7 @@
   position: absolute;
   right: 0;
   margin-top: 0.5rem;
-  width: 12rem;
+  width: 14rem;
   background-color: white;
   border-radius: 0.5rem;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
@@ -538,6 +538,165 @@
   transform: translateY(-1px);
 }
 
+
+/*barra de busqueda*/
+/* Barra de búsqueda general */
+.search-section {
+  margin-bottom: 2rem;
+}
+
+.search-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #6b7280;
+  z-index: 10;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.875rem 1rem 0.875rem 3rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  background-color: white;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.search-clear {
+  position: absolute;
+  right: 0.75rem;
+  padding: 0.25rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  border-radius: 0.375rem;
+  transition: all 0.2s ease;
+}
+
+.search-clear:hover {
+  color: #374151;
+  background-color: #f3f4f6;
+}
+
+.search-results-summary {
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.875rem;
+  padding: 0.5rem;
+  background-color: #f8fafc;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+}
+
+/* Estadísticas mejoradas */
+.stat-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.completion-bar {
+  width: 100%;
+  height: 0.5rem;
+  background-color: #e5e7eb;
+  border-radius: 0.25rem;
+  overflow: hidden;
+}
+
+.completion-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b, #10b981);
+  border-radius: 0.25rem;
+  transition: width 0.3s ease;
+}
+
+.completion-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+}
+
+.completion-percentage {
+  font-weight: 600;
+  color: #374151;
+}
+
+.completion-text {
+  color: #6b7280;
+}
+
+.stat-completion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.detail-text {
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-align: center;
+}
+
+/* Universidades mejoradas */
+.university-completion {
+  margin: 0.75rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.completion-bar-small {
+  width: 100%;
+  height: 0.375rem;
+  background-color: #e5e7eb;
+  border-radius: 0.1875rem;
+  overflow: hidden;
+}
+
+.completion-fill-small {
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b, #10b981);
+  border-radius: 0.1875rem;
+  transition: width 0.3s ease;
+}
+
+.completion-text-small {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.stat-count {
+  font-size: 0.6875rem;
+  color: #9ca3af;
+  margin-left: 0.25rem;
+}
 /* Content Sections */
 .content-grid {
   display: grid;

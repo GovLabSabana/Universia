@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
 
   // Verificar si hay un token guardado al cargar la app
   useEffect(() => {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('access_token')
     if (token) {
       // Verificar si el token es válido
       authAPI.getProfile()
@@ -26,11 +26,15 @@ export const AuthProvider = ({ children }) => {
           if (response.data?.success) {
             setUser(response.data.data)
           } else {
-            localStorage.removeItem('token')
+            localStorage.removeItem('access_token')
+            localStorage.removeItem('refresh_token')
+            localStorage.removeItem('user')
           }
         })
         .catch(() => {
-          localStorage.removeItem('token')
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
+          localStorage.removeItem('user')
         })
         .finally(() => {
           setLoading(false)
@@ -46,10 +50,12 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.login({ email, password })
       
       if (response.data?.success) {
-        const { token, user: userData } = response.data.data
+        const { session, user: userData } = response.data.data
+        const { access_token, refresh_token, expires_at } = session
 
-        localStorage.setItem('access_token', token)
-
+        localStorage.setItem('access_token', access_token)
+        localStorage.setItem('refresh_token', refresh_token)
+        localStorage.setItem('expires_at', expires_at)
         localStorage.setItem('user', JSON.stringify(userData))
 
         setUser(userData)
@@ -92,6 +98,8 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('access_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('expires_at')
     localStorage.removeItem('user')
     setUser(null)
     toast.success('Sesión cerrada')

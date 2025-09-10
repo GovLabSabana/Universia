@@ -7,9 +7,9 @@ import authRoutes from "./routes/auth.routes.js";
 import protectedRoutes from "./routes/protected.routes.js";
 import { sendError, sendSuccess } from "./utils/response.js";
 import universitiesRoutes from "./routes/universities.routes.js";
-import criteriaRoutes from "./routes/criteria.routes.js";
-import scoresRoutes from "./routes/scores.routes.js";
-import dashboardRoutes from "./routes/dashboard.routes.js";
+import dimensionsRoutes from "./routes/dimensions.routes.js";
+import questionsRoutes from "./routes/questions.routes.js";
+import evaluationsRoutes from "./routes/evaluations.routes.js";
 
 dotenv.config();
 
@@ -77,9 +77,9 @@ app.get("/", (req, res) => {
   sendSuccess(
     res,
     {
-      name: "Express Supabase Auth API",
+      name: "University Evaluation API",
       version: "1.0.0",
-      description: "Authentication API with Supabase integration",
+      description: "University evaluation system with 3 dimensions: Governance, Social, Environmental",
     },
     "API is running successfully"
   );
@@ -88,10 +88,10 @@ app.get("/", (req, res) => {
 app.use("/auth", authRoutes);
 app.use("/", protectedRoutes);
 
-app.use("/", dashboardRoutes);
 app.use("/", universitiesRoutes);
-app.use("/", criteriaRoutes);
-app.use("/", scoresRoutes);
+app.use("/", dimensionsRoutes);
+app.use("/", questionsRoutes);
+app.use("/", evaluationsRoutes);
 
 if (swaggerDocument) {
   app.use(
@@ -104,7 +104,6 @@ if (swaggerDocument) {
     })
   );
 }
-
 
 app.use("*", (req, res) => {
   sendError(res, "NOT_FOUND", `Route ${req.originalUrl} not found`, 404);
@@ -119,7 +118,6 @@ app.use((error, req, res, next) => {
 
   sendError(res, "INTERNAL_ERROR", "Internal server error");
 });
-
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

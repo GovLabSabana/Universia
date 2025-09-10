@@ -5,9 +5,9 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Express Supabase Auth API',
+      title: 'University Evaluation API',
       version: '1.0.0',
-      description: 'API de autenticación con Supabase - Documentación automática generada',
+      description: 'University evaluation system with 3 dimensions: Governance, Social, Environmental - Auto-generated documentation',
       contact: {
         name: 'API Support',
         email: 'support@api.com'
@@ -22,15 +22,31 @@ const options = {
     tags: [
       {
         name: 'Authentication',
-        description: 'Endpoints de autenticación de usuarios'
+        description: 'User authentication endpoints'
+      },
+      {
+        name: 'Universities',
+        description: 'University management endpoints'
+      },
+      {
+        name: 'Dimensions',
+        description: 'Evaluation dimensions (Governance, Social, Environmental)'
+      },
+      {
+        name: 'Questions',
+        description: 'Evaluation questions for each dimension'
+      },
+      {
+        name: 'Evaluations',
+        description: 'University evaluation management'
       },
       {
         name: 'Protected',
-        description: 'Endpoints protegidos que requieren autenticación'
+        description: 'Protected endpoints that require authentication'
       },
       {
         name: 'Health',
-        description: 'Estado de la API'
+        description: 'API health status'
       }
     ],
     components: {
@@ -170,6 +186,192 @@ const options = {
               nullable: true
             }
           }
+        },
+        Dimension: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'integer',
+              example: 1
+            },
+            name: {
+              type: 'string',
+              example: 'Governance'
+            },
+            code: {
+              type: 'string',
+              example: 'governance'
+            },
+            description: {
+              type: 'string',
+              example: 'Governance dimension evaluation'
+            },
+            created_at: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-01T10:00:00Z'
+            }
+          }
+        },
+        Question: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'integer',
+              example: 1
+            },
+            dimension_id: {
+              type: 'integer',
+              example: 1
+            },
+            text: {
+              type: 'string',
+              example: 'How would you rate the university governance transparency?'
+            },
+            order_index: {
+              type: 'integer',
+              example: 1
+            },
+            scale_descriptions: {
+              type: 'object',
+              example: {
+                "1": "Poor transparency",
+                "2": "Fair transparency", 
+                "3": "Good transparency",
+                "4": "Very good transparency",
+                "5": "Excellent transparency"
+              }
+            },
+            created_at: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-01T10:00:00Z'
+            }
+          }
+        },
+        University: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'integer',
+              example: 1
+            },
+            name: {
+              type: 'string',
+              example: 'Universidad Nacional'
+            },
+            city: {
+              type: 'string',
+              example: 'Bogotá'
+            },
+            department: {
+              type: 'string',
+              example: 'Cundinamarca'
+            }
+          }
+        },
+        EvaluationResponse: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'integer',
+              example: 1
+            },
+            evaluation_id: {
+              type: 'integer',
+              example: 1
+            },
+            question_id: {
+              type: 'integer',
+              example: 1
+            },
+            score: {
+              type: 'integer',
+              minimum: 1,
+              maximum: 5,
+              example: 4
+            },
+            created_at: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-01T10:00:00Z'
+            },
+            questions: {
+              $ref: '#/components/schemas/Question'
+            }
+          }
+        },
+        Evaluation: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'integer',
+              example: 1
+            },
+            user_id: {
+              type: 'string',
+              format: 'uuid',
+              example: '123e4567-e89b-12d3-a456-426614174000'
+            },
+            university_id: {
+              type: 'integer',
+              example: 1
+            },
+            dimension_id: {
+              type: 'integer',
+              example: 1
+            },
+            status: {
+              type: 'string',
+              enum: ['draft', 'submitted'],
+              example: 'draft'
+            },
+            comments: {
+              type: 'string',
+              nullable: true,
+              example: 'Overall good governance practices'
+            },
+            submitted_at: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              example: '2024-01-01T10:00:00Z'
+            },
+            created_at: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-01T09:00:00Z'
+            },
+            updated_at: {
+              type: 'string',
+              format: 'date-time',
+              example: '2024-01-01T09:30:00Z'
+            },
+            universities: {
+              $ref: '#/components/schemas/University'
+            },
+            dimensions: {
+              $ref: '#/components/schemas/Dimension'
+            }
+          }
+        },
+        EvaluationWithResponses: {
+          allOf: [
+            {
+              $ref: '#/components/schemas/Evaluation'
+            },
+            {
+              type: 'object',
+              properties: {
+                evaluation_responses: {
+                  type: 'array',
+                  items: {
+                    $ref: '#/components/schemas/EvaluationResponse'
+                  }
+                }
+              }
+            }
+          ]
         }
       }
     }

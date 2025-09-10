@@ -47,8 +47,13 @@ export const AuthProvider = ({ children }) => {
       
       if (response.data?.success) {
         const { token, user: userData } = response.data.data
-        localStorage.setItem('token', token)
+
+        localStorage.setItem('access_token', token)
+
+        localStorage.setItem('user', JSON.stringify(userData))
+
         setUser(userData)
+
         toast.success('¡Bienvenido!')
         return { success: true }
       } else {
@@ -86,7 +91,8 @@ export const AuthProvider = ({ children }) => {
   }
 
   const logout = () => {
-    localStorage.removeItem('token')
+    localStorage.removeItem('access_token')
+    localStorage.removeItem('user')
     setUser(null)
     toast.success('Sesión cerrada')
   }

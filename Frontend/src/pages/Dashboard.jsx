@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { universityAPI } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 import { LogOut, User, Settings, Home, Plus, X, Star, MapPin, Building2, Leaf, Users, Shield, ChevronDown, ChevronUp, Filter, Eye, Calendar, MessageSquare, FileText } from 'lucide-react'
 import "../design/Dashboard.css"
@@ -32,11 +33,20 @@ export default function Dashboard() {
     comment: ''
   })
   
-  const [universities, setUniversities] = useState([
-    { id: 1, name: 'Universidad Sabana', city: 'Chía', department: 'Cundinamarca' },
-    { id: 2, name: 'Universidad de Antioquia', city: 'Medellín', department: 'Antioquia' },
-    { id: 3, name: 'Universidad Nacional', city: 'Bogotá', department: 'Cundinamarca' }
-  ])
+  const [universities, setUniversities] = useState([])
+
+  useEffect(() => {
+    const fetchUniversities = async () => {
+      try {
+        const response = await universityAPI.getAll()
+        setUniversities(response.data.data)
+      } catch (error) {
+        console.error("Error cargando universidades:", error)
+      }
+    }
+
+    fetchUniversities()
+  }, [])
   
   // Definición de dimensiones y criterios según el modelo
   const evaluationDimensions = {
@@ -175,19 +185,21 @@ export default function Dashboard() {
     return email.split('@')[0]
   }
 
-  const handleCreateUniversity = () => {
+  const handleCreateUniversity = async () => {
     if (!newUniversity.name || !newUniversity.city || !newUniversity.department) {
       alert('Por favor completa todos los campos obligatorios')
       return
     }
 
-    const newUni = {
-      id: universities.length + 1,
-      ...newUniversity
+    try {
+      const response = await universityAPI.create(newUniversity)
+      setUniversities([...universities, response.data])
+      setNewUniversity({ name: '', city: '', department: '' })
+      setShowCreateForm(false)
+    } catch (error) {
+      console.error("Error creando universidad:", error)
+      alert("No se pudo crear la universidad")
     }
-    setUniversities([...universities, newUni])
-    setNewUniversity({ name: '', city: '', department: '' })
-    setShowCreateForm(false)
   }
 
   const handleCreateEvaluation = () => {

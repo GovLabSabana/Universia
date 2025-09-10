@@ -71,4 +71,10 @@ export const generalAPI = {
   }
 }
 
+// Endpoints de universidades
+export const universityAPI = {
+  getAll: () => api.get('/universities'),
+  create: (data) => api.post('/universities', data)
+}
+
 export default api

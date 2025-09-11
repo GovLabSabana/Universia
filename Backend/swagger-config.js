@@ -321,21 +321,10 @@ const options = {
               type: 'integer',
               example: 1
             },
-            status: {
-              type: 'string',
-              enum: ['draft', 'submitted'],
-              example: 'draft'
-            },
             comments: {
               type: 'string',
               nullable: true,
               example: 'Overall good governance practices'
-            },
-            submitted_at: {
-              type: 'string',
-              format: 'date-time',
-              nullable: true,
-              example: '2024-01-01T10:00:00Z'
             },
             created_at: {
               type: 'string',

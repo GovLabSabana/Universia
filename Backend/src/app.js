@@ -4,7 +4,6 @@ import dotenv from "dotenv";
 import swaggerUi from "swagger-ui-express";
 import { readFileSync } from "fs";
 import authRoutes from "./routes/auth.routes.js";
-import protectedRoutes from "./routes/protected.routes.js";
 import { sendError, sendSuccess } from "./utils/response.js";
 import universitiesRoutes from "./routes/universities.routes.js";
 import dimensionsRoutes from "./routes/dimensions.routes.js";
@@ -17,20 +16,23 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 let swaggerDocument;
+
 try {
   const swaggerData = readFileSync("./swagger-output.json", "utf8");
   console.log("Swagger documentation loaded successfully.");
-
   swaggerDocument = JSON.parse(swaggerData);
 } catch (error) {
   console.warn(
     "⚠️  Swagger documentation not found. Run: npm run docs:generate"
   );
 }
+const allowedOrigins = process.env.FRONTEND_URL.split(",").map((url) =>
+  url.trim()
+);
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "*",
+    origin: allowedOrigins,
     credentials: true,
   })
 );
@@ -79,15 +81,14 @@ app.get("/", (req, res) => {
     {
       name: "University Evaluation API",
       version: "1.0.0",
-      description: "University evaluation system with 3 dimensions: Governance, Social, Environmental",
+      description:
+        "University evaluation system with 3 dimensions: Governance, Social, Environmental",
     },
     "API is running successfully"
   );
 });
 
 app.use("/auth", authRoutes);
-app.use("/", protectedRoutes);
-
 app.use("/", universitiesRoutes);
 app.use("/", dimensionsRoutes);
 app.use("/", questionsRoutes);
@@ -100,7 +101,7 @@ if (swaggerDocument) {
     swaggerUi.setup(swaggerDocument, {
       explorer: true,
       customCss: ".swagger-ui .topbar { display: none }",
-      customSiteTitle: "Express Supabase Auth API - Documentation",
+      customSiteTitle: "Universia Evaluation API Docs",
     })
   );
 }
@@ -123,5 +124,4 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📚 API Documentation available at http://localhost:${PORT}`);
   console.log(`📖 Swagger docs available at http://localhost:${PORT}/docs`);
-  console.log(`🔐 Auth endpoints available at http://localhost:${PORT}/auth`);
 });

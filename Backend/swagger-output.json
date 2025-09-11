@@ -323,24 +323,10 @@
             "type": "integer",
             "example": 1
           },
-          "status": {
-            "type": "string",
-            "enum": [
-              "draft",
-              "submitted"
-            ],
-            "example": "draft"
-          },
           "comments": {
             "type": "string",
             "nullable": true,
             "example": "Overall good governance practices"
-          },
-          "submitted_at": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true,
-            "example": "2024-01-01T10:00:00Z"
           },
           "created_at": {
             "type": "string",
@@ -817,23 +803,9 @@
                             "type": "integer",
                             "example": 1
                           },
-                          "status": {
-                            "type": "string",
-                            "enum": [
-                              "draft",
-                              "submitted"
-                            ],
-                            "example": "draft"
-                          },
                           "comments": {
                             "type": "string",
                             "example": "Overall good governance practices"
-                          },
-                          "submitted_at": {
-                            "type": "string",
-                            "format": "date-time",
-                            "nullable": true,
-                            "example": "2024-01-01T10:00:00Z"
                           },
                           "created_at": {
                             "type": "string",
@@ -910,7 +882,7 @@
           "Evaluations"
         ],
         "summary": "Create or update evaluation",
-        "description": "Create a new evaluation or update an existing draft evaluation. Each user can only have one evaluation per university per dimension.",
+        "description": "Create a new evaluation or update an existing evaluation. Each user can only have one evaluation per university per dimension.",
         "security": [
           {
             "bearerAuth": []
@@ -1021,7 +993,7 @@
             }
           },
           "400": {
-            "description": "Validation error or trying to modify submitted evaluation",
+            "description": "Validation error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1138,7 +1110,7 @@
           "Evaluations"
         ],
         "summary": "Delete evaluation",
-        "description": "Delete a draft evaluation. Submitted evaluations cannot be deleted.",
+        "description": "Delete an evaluation.",
         "security": [
           {
             "bearerAuth": []
@@ -1181,16 +1153,6 @@
               }
             }
           },
-          "400": {
-            "description": "Cannot delete submitted evaluation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
           "401": {
             "description": "Authentication required",
             "content": {
@@ -1203,203 +1165,6 @@
           },
           "404": {
             "description": "Evaluation not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/evaluations/{id}/submit": {
-      "put": {
-        "tags": [
-          "Evaluations"
-        ],
-        "summary": "Submit evaluation",
-        "description": "Submit a draft evaluation, changing its status to 'submitted' and preventing further modifications",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "description": "ID of the evaluation to submit",
-            "example": 1
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Evaluation submitted successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Evaluation submitted successfully"
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "integer",
-                          "example": 1
-                        },
-                        "status": {
-                          "type": "string",
-                          "example": "submitted"
-                        },
-                        "submitted_at": {
-                          "type": "string",
-                          "format": "date-time",
-                          "example": "2024-01-01T10:00:00Z"
-                        },
-                        "universities": {
-                          "type": "object",
-                          "properties": {
-                            "name": {
-                              "type": "string",
-                              "example": "Universidad Nacional"
-                            }
-                          }
-                        },
-                        "dimensions": {
-                          "type": "object",
-                          "properties": {
-                            "name": {
-                              "type": "string",
-                              "example": "Governance"
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Validation error (already submitted or no responses)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication required",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Evaluation not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/protected": {
-      "get": {
-        "tags": [
-          "Protected"
-        ],
-        "summary": "Protected endpoint",
-        "description": "Access protected resource - requires authentication",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Protected resource accessed successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Welcome to the protected area!"
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "user": {
-                          "$ref": "#/components/schemas/User"
-                        },
-                        "accessTime": {
-                          "type": "string",
-                          "format": "date-time",
-                          "example": "2023-01-01T12:00:00Z"
-                        },
-                        "message": {
-                          "type": "string",
-                          "example": "This is sensitive information only for authenticated users"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication required",
             "content": {
               "application/json": {
                 "schema": {
@@ -1631,7 +1396,23 @@
           "Universities"
         ],
         "summary": "Get all universities",
-        "description": "Retrieve the list of all universities",
+        "description": "Retrieve the list of all universities, optionally including evaluation scores by dimension",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_scores",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "description": "Include average scores by dimension for each university",
+            "example": "true"
+          }
+        ],
         "responses": {
           "200": {
             "description": "List of universities",
@@ -1654,21 +1435,67 @@
                         "type": "object",
                         "properties": {
                           "id": {
-                            "type": "integer"
+                            "type": "integer",
+                            "example": 1
                           },
                           "name": {
-                            "type": "string"
+                            "type": "string",
+                            "example": "Universidad Nacional"
                           },
                           "city": {
-                            "type": "string"
+                            "type": "string",
+                            "example": "Bogotá"
                           },
                           "department": {
-                            "type": "string"
+                            "type": "string",
+                            "example": "Cundinamarca"
+                          },
+                          "dimension_scores": {
+                            "type": "array",
+                            "description": "Average scores by dimension (only when include_scores=true)",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "dimension_id": {
+                                  "type": "integer",
+                                  "example": 1
+                                },
+                                "dimension_name": {
+                                  "type": "string",
+                                  "example": "Governance"
+                                },
+                                "dimension_code": {
+                                  "type": "string",
+                                  "example": "governance"
+                                },
+                                "average_score": {
+                                  "type": "number",
+                                  "nullable": true,
+                                  "example": 4.25,
+                                  "description": "Average score for this dimension (null if no evaluations)"
+                                },
+                                "evaluation_count": {
+                                  "type": "integer",
+                                  "example": 3,
+                                  "description": "Number of evaluations for this dimension"
+                                }
+                              }
+                            }
                           }
                         }
                       }
                     }
                   }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }

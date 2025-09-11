@@ -55,9 +55,7 @@ CREATE TABLE evaluations (
     user_id UUID REFERENCES auth.users(id),
     university_id INTEGER REFERENCES universities(id),
     dimension_id INTEGER REFERENCES dimensions(id),
-    status VARCHAR(20) DEFAULT 'draft',
     comments TEXT,
-    submitted_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
     UNIQUE(user_id, university_id, dimension_id)

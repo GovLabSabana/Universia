@@ -43,18 +43,9 @@ import { sendSuccess, sendError, sendValidationError } from "../utils/response.j
  *                       dimension_id:
  *                         type: integer
  *                         example: 1
- *                       status:
- *                         type: string
- *                         enum: [draft, submitted]
- *                         example: draft
  *                       comments:
  *                         type: string
  *                         example: Overall good governance practices
- *                       submitted_at:
- *                         type: string
- *                         format: date-time
- *                         nullable: true
- *                         example: 2024-01-01T10:00:00Z
  *                       created_at:
  *                         type: string
  *                         format: date-time
@@ -213,7 +204,7 @@ export const getEvaluation = async (req, res) => {
  *     tags:
  *       - Evaluations
  *     summary: Create or update evaluation
- *     description: Create a new evaluation or update an existing draft evaluation. Each user can only have one evaluation per university per dimension.
+ *     description: Create a new evaluation or update an existing evaluation. Each user can only have one evaluation per university per dimension.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -290,7 +281,7 @@ export const getEvaluation = async (req, res) => {
  *                 data:
  *                   $ref: '#/components/schemas/EvaluationWithResponses'
  *       400:
- *         description: Validation error or trying to modify submitted evaluation
+ *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
@@ -341,10 +332,6 @@ export const createOrUpdateEvaluation = async (req, res) => {
     let evaluation;
 
     if (existingEvaluation) {
-      if (existingEvaluation.status === "submitted") {
-        return sendError(res, "VALIDATION_ERROR", "Cannot modify a submitted evaluation", 400);
-      }
-
       const { data, error } = await supabase
         .from("evaluations")
         .update({
@@ -372,8 +359,7 @@ export const createOrUpdateEvaluation = async (req, res) => {
           user_id: userId,
           university_id,
           dimension_id,
-          comments,
-          status: "draft"
+          comments
         })
         .select()
         .single();
@@ -426,141 +412,6 @@ export const createOrUpdateEvaluation = async (req, res) => {
   }
 };
 
-/**
- * @swagger
- * /evaluations/{id}/submit:
- *   put:
- *     tags:
- *       - Evaluations
- *     summary: Submit evaluation
- *     description: Submit a draft evaluation, changing its status to 'submitted' and preventing further modifications
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: ID of the evaluation to submit
- *         example: 1
- *     responses:
- *       200:
- *         description: Evaluation submitted successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Evaluation submitted successfully
- *                 data:
- *                   type: object
- *                   properties:
- *                     id:
- *                       type: integer
- *                       example: 1
- *                     status:
- *                       type: string
- *                       example: submitted
- *                     submitted_at:
- *                       type: string
- *                       format: date-time
- *                       example: 2024-01-01T10:00:00Z
- *                     universities:
- *                       type: object
- *                       properties:
- *                         name:
- *                           type: string
- *                           example: Universidad Nacional
- *                     dimensions:
- *                       type: object
- *                       properties:
- *                         name:
- *                           type: string
- *                           example: Governance
- *       400:
- *         description: Validation error (already submitted or no responses)
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       401:
- *         description: Authentication required
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       404:
- *         description: Evaluation not found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-export const submitEvaluation = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.id;
-
-    const { data: evaluation, error: fetchError } = await supabase
-      .from("evaluations")
-      .select("*, evaluation_responses(*)")
-      .eq("id", id)
-      .eq("user_id", userId)
-      .single();
-
-    if (fetchError) {
-      if (fetchError.code === "PGRST116") {
-        return sendError(res, "NOT_FOUND", "Evaluation not found", 404);
-      }
-      return sendError(res, "DB_ERROR", fetchError.message);
-    }
-
-    if (evaluation.status === "submitted") {
-      return sendError(res, "VALIDATION_ERROR", "Evaluation is already submitted", 400);
-    }
-
-    if (!evaluation.evaluation_responses || evaluation.evaluation_responses.length === 0) {
-      return sendError(res, "VALIDATION_ERROR", "Cannot submit evaluation without responses", 400);
-    }
-
-    const { data, error } = await supabase
-      .from("evaluations")
-      .update({
-        status: "submitted",
-        submitted_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", id)
-      .eq("user_id", userId)
-      .select(`
-        *,
-        universities(name, city, department),
-        dimensions(name, code)
-      `)
-      .single();
-
-    if (error) {
-      return sendError(res, "DB_ERROR", error.message);
-    }
-
-    sendSuccess(res, data, "Evaluation submitted successfully");
-  } catch (err) {
-    console.error("Error submitting evaluation:", err);
-    sendError(res, "INTERNAL_ERROR", "Internal server error");
-  }
-};
 
 /**
  * @swagger
@@ -569,7 +420,7 @@ export const submitEvaluation = async (req, res) => {
  *     tags:
  *       - Evaluations
  *     summary: Delete evaluation
- *     description: Delete a draft evaluation. Submitted evaluations cannot be deleted.
+ *     description: Delete an evaluation.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -597,12 +448,6 @@ export const submitEvaluation = async (req, res) => {
  *                 data:
  *                   type: null
  *                   example: null
- *       400:
- *         description: Cannot delete submitted evaluation
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         description: Authentication required
  *         content:
@@ -626,24 +471,6 @@ export const deleteEvaluation = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
-
-    const { data: evaluation, error: fetchError } = await supabase
-      .from("evaluations")
-      .select("status")
-      .eq("id", id)
-      .eq("user_id", userId)
-      .single();
-
-    if (fetchError) {
-      if (fetchError.code === "PGRST116") {
-        return sendError(res, "NOT_FOUND", "Evaluation not found", 404);
-      }
-      return sendError(res, "DB_ERROR", fetchError.message);
-    }
-
-    if (evaluation.status === "submitted") {
-      return sendError(res, "VALIDATION_ERROR", "Cannot delete a submitted evaluation", 400);
-    }
 
     const { error } = await supabase
       .from("evaluations")

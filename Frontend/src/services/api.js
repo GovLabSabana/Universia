@@ -1,17 +1,17 @@
 import axios from 'axios'
 
-// Configuración base de axios
+// =======================
+// API BASE 1 → BACKEND AUTENTICADO
+// =======================
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
 
-const api = axios.create({
+const apiAuth = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  }
+  headers: { 'Content-Type': 'application/json' },
 })
 
-// Interceptor para agregar el token a las peticiones
-api.interceptors.request.use(
+// Interceptor para agregar token
+apiAuth.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token')
     if (token) {
@@ -19,62 +19,65 @@ api.interceptors.request.use(
     }
     return config
   },
-  (error) => {
-    return Promise.reject(error)
-  }
+  (error) => Promise.reject(error)
 )
 
-// Interceptor para manejar respuestas
-api.interceptors.response.use(
-  (response) => {
-    return response
-  },
+// Interceptor para manejar expiración de token
+apiAuth.interceptors.response.use(
+  (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token inválido o expirado
-      localStorage.removeItem('token')
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('expires_at')
+      localStorage.removeItem('user')
       window.location.href = '/login'
     }
     return Promise.reject(error)
   }
 )
 
-// Endpoints de autenticación
 export const authAPI = {
-  // Login
-  login: (credentials) => {
-    return api.post('/auth/login', credentials)
-  },
-  
-  // Registro
-  register: (userData) => {
-    return api.post('/auth/signup', userData)
-  },
-  
-  // Obtener perfil del usuario
-  getProfile: () => {
-    return api.get('/auth/user')
-  },
-  
-  
-  // Logout (si está implementado en el backend)
-  logout: () => {
-    return api.post('/auth/logout')
-  }
+  login: (credentials) => apiAuth.post('/auth/login', credentials),
+  register: (userData) => apiAuth.post('/auth/signup', userData),
+  getProfile: () => apiAuth.get('/auth/user'),
+  logout: () => apiAuth.post('/auth/logout'),
 }
 
-// API general para otras peticiones
 export const generalAPI = {
-  // Ejemplo de endpoint protegido
-  getProtectedData: () => {
-    return api.get('/protected-data')
-  }
+  getProtectedData: () => apiAuth.get('/protected-data'),
 }
 
-// Endpoints de universidades
+// =======================
+// API BASE 2 → UNIVERSIA (FORMULARIOS)
+// =======================
+const API_UNIVERSIA_URL = import.meta.env.VITE_API_UNIVERSIA_URL || 'http://localhost:4000'
+
+const apiUniversia = axios.create({
+  baseURL: API_UNIVERSIA_URL,
+  headers: { 'Content-Type': 'application/json' },
+})
+
+// Reutilizamos el mismo interceptor para meter el token
+apiUniversia.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('access_token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => Promise.reject(error)
+)
+
 export const universityAPI = {
-  getAll: () => api.get('/universities'),
-  create: (data) => api.post('/universities', data)
+  getAll: () => apiAuth.get('/universities'), // universidades siguen en el backend principal
 }
 
-export default api
+export const formAPI = {
+  getQuestionById: (id) => apiUniversia.get(`/questions/${id}`),
+  getDimensions: () => apiUniversia.get('/dimensions'),
+  createEvaluation: (data) => apiUniversia.post('/evaluations', data),
+}
+
+export { apiAuth, apiUniversia }

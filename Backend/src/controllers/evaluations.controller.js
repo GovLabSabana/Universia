@@ -321,13 +321,17 @@ export const createOrUpdateEvaluation = async (req, res) => {
       }
     }
 
-    const { data: existingEvaluation } = await supabase
+    const { data: existingEvaluation, error: queryError } = await supabase
       .from("evaluations")
       .select("id")
       .eq("user_id", userId)
       .eq("university_id", university_id)
       .eq("dimension_id", dimension_id)
-      .single();
+      .maybeSingle();
+
+    if (queryError) {
+      return sendError(res, "DB_ERROR", queryError.message);
+    }
 
     let evaluation;
 
@@ -348,10 +352,14 @@ export const createOrUpdateEvaluation = async (req, res) => {
 
       evaluation = data;
 
-      await supabase
+      const { error: deleteError } = await supabase
         .from("evaluation_responses")
         .delete()
         .eq("evaluation_id", evaluation.id);
+
+      if (deleteError) {
+        return sendError(res, "DB_ERROR", deleteError.message);
+      }
     } else {
       const { data, error } = await supabase
         .from("evaluations")
@@ -379,7 +387,10 @@ export const createOrUpdateEvaluation = async (req, res) => {
 
     const { error: responsesError } = await supabase
       .from("evaluation_responses")
-      .insert(responsesToInsert);
+      .upsert(responsesToInsert, { 
+        onConflict: 'evaluation_id,question_id',
+        ignoreDuplicates: false 
+      });
 
     if (responsesError) {
       return sendError(res, "DB_ERROR", responsesError.message);

@@ -1186,6 +1186,146 @@
         }
       }
     },
+    "/evaluations/averages": {
+      "get": {
+        "tags": [
+          "Evaluations"
+        ],
+        "summary": "Get global averages by dimension",
+        "description": "Retrieve average scores for each dimension across all universities",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Global averages retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "dimension_id": {
+                            "type": "integer"
+                          },
+                          "dimension_name": {
+                            "type": "string"
+                          },
+                          "dimension_code": {
+                            "type": "string"
+                          },
+                          "average_score": {
+                            "type": "number"
+                          },
+                          "total_evaluations": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/evaluations/ranking": {
+      "get": {
+        "tags": [
+          "Evaluations"
+        ],
+        "summary": "Get top 10 universities ranking",
+        "description": "Retrieve top 10 universities with best average scores",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dimension",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by dimension ID (optional). If not provided, shows total average across all dimensions"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "University ranking retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "rank": {
+                            "type": "integer"
+                          },
+                          "university_id": {
+                            "type": "integer"
+                          },
+                          "university_name": {
+                            "type": "string"
+                          },
+                          "city": {
+                            "type": "string"
+                          },
+                          "department": {
+                            "type": "string"
+                          },
+                          "average_score": {
+                            "type": "number"
+                          },
+                          "total_evaluations": {
+                            "type": "integer"
+                          },
+                          "dimension_name": {
+                            "type": "string",
+                            "description": "Only present when filtering by dimension"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
     "/dimensions/{dimensionId}/questions": {
       "get": {
         "tags": [

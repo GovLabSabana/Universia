@@ -521,6 +521,7 @@ export const getGlobalAverages = async (req, res) => {
       .select(`
         score,
         evaluations!inner(
+          id,
           dimension_id,
           dimensions!inner(name, code)
         )
@@ -633,6 +634,7 @@ export const getUniversitiesRanking = async (req, res) => {
       .select(`
         score,
         evaluations!inner(
+          id,
           university_id,
           dimension_id,
           universities!inner(name, city, department),
@@ -675,7 +677,7 @@ export const getUniversitiesRanking = async (req, res) => {
       }
 
       universityStats[universityId].scores.push(score);
-      universityStats[universityId].evaluations.add(response.evaluations.university_id + '_' + response.evaluations.dimension_id);
+      universityStats[universityId].evaluations.add(response.evaluations.id);
     });
 
     // Calcular promedios y crear ranking

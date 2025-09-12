@@ -333,50 +333,27 @@ export const createOrUpdateEvaluation = async (req, res) => {
       return sendError(res, "DB_ERROR", queryError.message);
     }
 
-    let evaluation;
-
     if (existingEvaluation) {
-      const { data, error } = await supabase
-        .from("evaluations")
-        .update({
-          comments,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", existingEvaluation.id)
-        .select()
-        .single();
+      return res.status(409).json({
+        success: false,
+        error: "EVALUATION_ALREADY_EXISTS",
+        message: "Ya has respondido esta evaluación para esta universidad y dimensión"
+      });
+    }
 
-      if (error) {
-        return sendError(res, "DB_ERROR", error.message);
-      }
+    const { data: evaluation, error } = await supabase
+      .from("evaluations")
+      .insert({
+        user_id: userId,
+        university_id,
+        dimension_id,
+        comments
+      })
+      .select()
+      .single();
 
-      evaluation = data;
-
-      const { error: deleteError } = await supabase
-        .from("evaluation_responses")
-        .delete()
-        .eq("evaluation_id", evaluation.id);
-
-      if (deleteError) {
-        return sendError(res, "DB_ERROR", deleteError.message);
-      }
-    } else {
-      const { data, error } = await supabase
-        .from("evaluations")
-        .insert({
-          user_id: userId,
-          university_id,
-          dimension_id,
-          comments
-        })
-        .select()
-        .single();
-
-      if (error) {
-        return sendError(res, "DB_ERROR", error.message);
-      }
-
-      evaluation = data;
+    if (error) {
+      return sendError(res, "DB_ERROR", error.message);
     }
 
     const responsesToInsert = responses.map(response => ({
@@ -387,10 +364,7 @@ export const createOrUpdateEvaluation = async (req, res) => {
 
     const { error: responsesError } = await supabase
       .from("evaluation_responses")
-      .upsert(responsesToInsert, { 
-        onConflict: 'evaluation_id,question_id',
-        ignoreDuplicates: false 
-      });
+      .insert(responsesToInsert);
 
     if (responsesError) {
       return sendError(res, "DB_ERROR", responsesError.message);

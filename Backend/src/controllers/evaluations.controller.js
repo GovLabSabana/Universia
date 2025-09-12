@@ -473,3 +473,238 @@ export const deleteEvaluation = async (req, res) => {
     sendError(res, "INTERNAL_ERROR", "Internal server error");
   }
 };
+
+/**
+ * @swagger
+ * /evaluations/averages:
+ *   get:
+ *     tags:
+ *       - Evaluations
+ *     summary: Get global averages by dimension
+ *     description: Retrieve average scores for each dimension across all universities
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Global averages retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       dimension_id:
+ *                         type: integer
+ *                       dimension_name:
+ *                         type: string
+ *                       dimension_code:
+ *                         type: string
+ *                       average_score:
+ *                         type: number
+ *                       total_evaluations:
+ *                         type: integer
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+export const getGlobalAverages = async (req, res) => {
+  try {
+    const { data: averages, error } = await supabase
+      .from("evaluation_responses")
+      .select(`
+        score,
+        evaluations!inner(
+          dimension_id,
+          dimensions!inner(name, code)
+        )
+      `);
+
+    if (error) {
+      return sendError(res, "DB_ERROR", error.message);
+    }
+
+    // Agrupar por dimensión y calcular promedios
+    const dimensionStats = {};
+
+    averages.forEach(response => {
+      const dimensionId = response.evaluations.dimension_id;
+      const dimensionName = response.evaluations.dimensions.name;
+      const dimensionCode = response.evaluations.dimensions.code;
+      const score = response.score;
+
+      if (!dimensionStats[dimensionId]) {
+        dimensionStats[dimensionId] = {
+          dimension_id: dimensionId,
+          dimension_name: dimensionName,
+          dimension_code: dimensionCode,
+          scores: [],
+          evaluations: new Set()
+        };
+      }
+
+      dimensionStats[dimensionId].scores.push(score);
+      dimensionStats[dimensionId].evaluations.add(response.evaluations.id);
+    });
+
+    // Calcular promedios y totales
+    const result = Object.values(dimensionStats).map(dimension => ({
+      dimension_id: dimension.dimension_id,
+      dimension_name: dimension.dimension_name,
+      dimension_code: dimension.dimension_code,
+      average_score: dimension.scores.length > 0 
+        ? parseFloat((dimension.scores.reduce((sum, score) => sum + score, 0) / dimension.scores.length).toFixed(2))
+        : null,
+      total_evaluations: dimension.evaluations.size
+    }));
+
+    sendSuccess(res, result, "Global averages retrieved successfully");
+  } catch (err) {
+    console.error("Error fetching global averages:", err);
+    sendError(res, "INTERNAL_ERROR", "Internal server error");
+  }
+};
+
+/**
+ * @swagger
+ * /evaluations/ranking:
+ *   get:
+ *     tags:
+ *       - Evaluations
+ *     summary: Get top 10 universities ranking
+ *     description: Retrieve top 10 universities with best average scores
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: dimension
+ *         schema:
+ *           type: integer
+ *         description: Filter by dimension ID (optional). If not provided, shows total average across all dimensions
+ *     responses:
+ *       200:
+ *         description: University ranking retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       rank:
+ *                         type: integer
+ *                       university_id:
+ *                         type: integer
+ *                       university_name:
+ *                         type: string
+ *                       city:
+ *                         type: string
+ *                       department:
+ *                         type: string
+ *                       average_score:
+ *                         type: number
+ *                       total_evaluations:
+ *                         type: integer
+ *                       dimension_name:
+ *                         type: string
+ *                         description: Only present when filtering by dimension
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+export const getUniversitiesRanking = async (req, res) => {
+  try {
+    const { dimension } = req.query;
+    
+    let query = supabase
+      .from("evaluation_responses")
+      .select(`
+        score,
+        evaluations!inner(
+          university_id,
+          dimension_id,
+          universities!inner(name, city, department),
+          dimensions!inner(name, code)
+        )
+      `);
+
+    // Filtrar por dimensión si se especifica
+    if (dimension) {
+      query = query.eq('evaluations.dimension_id', dimension);
+    }
+
+    const { data: responses, error } = await query;
+
+    if (error) {
+      return sendError(res, "DB_ERROR", error.message);
+    }
+
+    // Agrupar por universidad
+    const universityStats = {};
+
+    responses.forEach(response => {
+      const universityId = response.evaluations.university_id;
+      const universityName = response.evaluations.universities.name;
+      const city = response.evaluations.universities.city;
+      const department = response.evaluations.universities.department;
+      const dimensionName = response.evaluations.dimensions.name;
+      const score = response.score;
+
+      if (!universityStats[universityId]) {
+        universityStats[universityId] = {
+          university_id: universityId,
+          university_name: universityName,
+          city,
+          department,
+          scores: [],
+          evaluations: new Set(),
+          dimension_name: dimension ? dimensionName : undefined
+        };
+      }
+
+      universityStats[universityId].scores.push(score);
+      universityStats[universityId].evaluations.add(response.evaluations.university_id + '_' + response.evaluations.dimension_id);
+    });
+
+    // Calcular promedios y crear ranking
+    const universities = Object.values(universityStats)
+      .map(university => ({
+        university_id: university.university_id,
+        university_name: university.university_name,
+        city: university.city,
+        department: university.department,
+        average_score: university.scores.length > 0 
+          ? parseFloat((university.scores.reduce((sum, score) => sum + score, 0) / university.scores.length).toFixed(2))
+          : 0,
+        total_evaluations: university.evaluations.size,
+        ...(dimension && { dimension_name: university.dimension_name })
+      }))
+      .sort((a, b) => b.average_score - a.average_score) // Ordenar por promedio descendente
+      .slice(0, 10) // Top 10
+      .map((university, index) => ({
+        rank: index + 1,
+        ...university
+      }));
+
+    const message = dimension 
+      ? "University ranking by dimension retrieved successfully"
+      : "University ranking by total average retrieved successfully";
+
+    sendSuccess(res, universities, message);
+  } catch (err) {
+    console.error("Error fetching university ranking:", err);
+    sendError(res, "INTERNAL_ERROR", "Internal server error");
+  }
+};

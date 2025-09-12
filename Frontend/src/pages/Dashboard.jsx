@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [currentDimensionId, setCurrentDimensionId] = useState(null)
   const [finished, setFinished] = useState(false)
   const [isEvaluationMode, setIsEvaluationMode] = useState(false)
+  const [comments, setComments] = useState("") // Estado para comentarios generales
   
   // Estados para el filtro de búsqueda general
   const [searchTerm, setSearchTerm] = useState('')
@@ -72,15 +73,35 @@ export default function Dashboard() {
       .then(res => {
         if (res.data?.success) {
           setCurrentQuestion(res.data.data)
+          // Si cambiamos de dimensión, enviar las respuestas de la dimensión anterior
+          if (currentDimensionId && res.data.data.dimension_id !== currentDimensionId) {
+            submitEvaluation(responses, currentDimensionId)
+          }
           setCurrentDimensionId(res.data.data.dimension_id)
+        } else {
+          // No hay más preguntas, enviar las respuestas de la última dimensión
+          if (responses.length > 0 && currentDimensionId) {
+            submitEvaluation(responses, currentDimensionId).then(() => {
+              setFinished(true)
+              setIsEvaluationMode(false)
+            })
+          } else {
+            setFinished(true)
+            setIsEvaluationMode(false)
+          }
+        }
+      })
+      .catch(() => {
+        // Error al cargar pregunta, enviar respuestas si hay
+        if (responses.length > 0 && currentDimensionId) {
+          submitEvaluation(responses, currentDimensionId).then(() => {
+            setFinished(true)
+            setIsEvaluationMode(false)
+          })
         } else {
           setFinished(true)
           setIsEvaluationMode(false)
         }
-      })
-      .catch(() => {
-        setFinished(true)
-        setIsEvaluationMode(false)
       })
   }, [currentQuestionId, selectedUniversity, isEvaluationMode])
 
@@ -88,7 +109,8 @@ export default function Dashboard() {
   const handleAnswer = (score) => {
     if (!currentQuestion) return
 
-    const newResponses = [...responses, { question_id: currentQuestion.id, score }]
+    const newResponse = { question_id: currentQuestion.id, score }
+    const newResponses = [...responses, newResponse]
     setResponses(newResponses)
 
     // Verificar si cambia de dimensión en la siguiente pregunta
@@ -99,42 +121,51 @@ export default function Dashboard() {
         if (res.data?.success) {
           const nextDimId = res.data.data.dimension_id
           if (nextDimId !== currentDimensionId) {
-            // Enviar evaluación por dimensión
-            submitEvaluation(newResponses, currentDimensionId)
-            setResponses([])
+            // Enviar evaluación por dimensión antes de continuar
+            submitEvaluation(newResponses, currentDimensionId).then(() => {
+              setResponses([])
+              setCurrentQuestionId(nextQuestionId)
+            })
+          } else {
+            setCurrentQuestionId(nextQuestionId)
           }
-          setCurrentQuestionId(nextQuestionId)
         } else {
-          // No hay más preguntas
-          submitEvaluation(newResponses, currentDimensionId)
-          setFinished(true)
-          setIsEvaluationMode(false)
+          // No hay más preguntas, enviar evaluación de la dimensión actual
+          submitEvaluation(newResponses, currentDimensionId).then(() => {
+            setFinished(true)
+            setIsEvaluationMode(false)
+          })
         }
       })
       .catch(() => {
-        // No hay más preguntas
-        submitEvaluation(newResponses, currentDimensionId)
-        setFinished(true)
-        setIsEvaluationMode(false)
+        // No hay más preguntas, enviar evaluación de la dimensión actual
+        submitEvaluation(newResponses, currentDimensionId).then(() => {
+          setFinished(true)
+          setIsEvaluationMode(false)
+        })
       })
   }
 
   // Enviar evaluación por dimensión
-  const submitEvaluation = (responsesToSend, dimensionId) => {
-    if (!selectedUniversity) return
+  const submitEvaluation = async (responsesToSend, dimensionId) => {
+    if (!selectedUniversity || responsesToSend.length === 0) return
+    
     const payload = {
       university_id: selectedUniversity.id,
       dimension_id: dimensionId,
       responses: responsesToSend,
-      comments: "" // aquí podrías agregar un textarea para comentarios
+      comments: comments
     }
-    formAPI.createEvaluation(payload)
-      .then(() => {
-        toast.success(`Evaluación guardada para dimensión ${dimensionMap[dimensionId]}`)
-      })
-      .catch(() => {
-        toast.error("Error al guardar evaluación")
-      })
+    
+    try {
+      await formAPI.createEvaluation(payload)
+      toast.success(`Evaluación guardada para dimensión ${dimensionMap[dimensionId]}`)
+      return true
+    } catch (error) {
+      console.error("Error al guardar evaluación:", error)
+      toast.error("Error al guardar evaluación")
+      return false
+    }
   }
 
   const getFilteredUniversitiesForSelection = () => {
@@ -215,6 +246,7 @@ export default function Dashboard() {
     
     setCurrentQuestionId(1)
     setResponses([])
+    setComments("")
     setFinished(false)
     setIsEvaluationMode(true)
   }
@@ -235,11 +267,6 @@ export default function Dashboard() {
         className={`star ${i < score ? 'star-filled' : 'star-empty'}`}
       />
     ))
-  }
-
-  // Limpiar búsqueda
-  const clearSearch = () => {
-    setSearchTerm('')
   }
 
   return (
@@ -302,32 +329,6 @@ export default function Dashboard() {
             <p className="welcome-subtitle">Sistema de Evaluación de Sostenibilidad para Instituciones de Educación Superior Colombianas</p>
           </div>
 
-          {/* Progreso general de evaluación */}
-          {isEvaluationMode && (
-            <div className="evaluation-progress-section">
-              <div className="progress-card">
-                <h3 className="progress-title">Progreso de Evaluación</h3>
-                <div className="progress-info">
-                  <div className="progress-bar-container">
-                    <div className="progress-bar">
-                      <div 
-                        className="progress-fill" 
-                        style={{ width: `${((currentQuestionId - 1) / 50) * 100}%` }}
-                      ></div>
-                    </div>
-                    <span className="progress-text">
-                      Pregunta {currentQuestionId}
-                    </span>
-                  </div>
-                  <div className="completed-count">
-                    <CheckCircle className="completed-icon" />
-                    {responses.length} respuestas completadas
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Estadísticas por dimensión */}
           <div className="stats-grid">
             {Object.entries(evaluationDimensions).map(([dimension, config]) => {
@@ -389,6 +390,32 @@ export default function Dashboard() {
               isEvaluationMode ? 'Evaluación en Curso' : 'Iniciar Evaluación Secuencial'}
             </button>
           </div>
+
+          {/* Progreso general de evaluación */}
+          {isEvaluationMode && (
+            <div className="evaluation-progress-section sticky-progress">
+              <div className="progress-card">
+                <h3 className="progress-title">Progreso de Evaluación</h3>
+                <div className="progress-info">
+                  <div className="progress-bar-container">
+                    <div className="progress-bar">
+                      <div 
+                        className="progress-fill" 
+                        style={{ width: `${((currentQuestionId - 1) / 50) * 100}%` }}
+                      ></div>
+                    </div>
+                    <span className="progress-text">
+                      Pregunta {currentQuestionId}
+                    </span>
+                  </div>
+                  <div className="completed-count">
+                    <CheckCircle className="completed-icon" />
+                    {responses.length} respuestas completadas
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Selección de universidad */}
           {!isEvaluationMode && !selectedUniversity && (
@@ -455,25 +482,6 @@ export default function Dashboard() {
                     </div>
                   )}
                 </div>
-                
-                {selectedUniversity && (
-                  <div className="selected-university-info">
-                    <h4>Institución seleccionada:</h4>
-                    <div className="selected-university-card">
-                      <h5>{selectedUniversity.name}</h5>
-                      <p>{selectedUniversity.city}, {selectedUniversity.department}</p>
-                      <button
-                        onClick={() => {
-                          setSelectedUniversity(null)
-                          setUniversitySearchTerm('')
-                        }}
-                        className="change-university-btn"
-                      >
-                        Cambiar Institución
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -485,13 +493,21 @@ export default function Dashboard() {
                 <div>
                   <h3 className="form-title">Evaluación Secuencial</h3>
                   <p className="evaluation-progress-text">
-                    Pregunta {currentQuestionId}
+                    Pregunta {currentQuestionId} - Dimensión: {dimensionMap[currentDimensionId]}
                   </p>
                 </div>
                 <button 
                   onClick={() => {
-                    setIsEvaluationMode(false)
-                    setFinished(false)
+                    // Si hay respuestas pendientes, enviarlas antes de salir
+                    if (responses.length > 0 && currentDimensionId) {
+                      submitEvaluation(responses, currentDimensionId).then(() => {
+                        setIsEvaluationMode(false)
+                        setFinished(false)
+                      })
+                    } else {
+                      setIsEvaluationMode(false)
+                      setFinished(false)
+                    }
                   }} 
                   className="close-button"
                   title="Salir de evaluación"
@@ -556,20 +572,72 @@ export default function Dashboard() {
 
           {/* Mensaje de finalización */}
           {finished && (
-            <div className="form-container">
-              <div className="form-header">
-                <h3 className="form-title">¡Evaluación Completada!</h3>
+            <div className="form-container completed-container">
+              <div className="form-header completed-header">
+                <div className="success-animation">
+                  <CheckCircle className="success-icon" />
+                  <div className="success-circle"></div>
+                </div>
+                <h3 className="form-title completed-title">¡Evaluación Completada con Éxito!</h3>
               </div>
               
               <div className="completed-evaluation">
-                <div className="completed-icon-container">
-                  <CheckCircle className="completed-main-icon" />
+                <div className="celebration-animation">
+                  <div className="confetti"></div>
+                  <div className="confetti"></div>
+                  <div className="confetti"></div>
+                  <div className="confetti"></div>
+                  <div className="confetti"></div>
                 </div>
-                <h4 className="completed-title">Gracias por completar la evaluación</h4>
-                <p className="completed-message">
-                  Has terminado de evaluar {selectedUniversity.name}. 
-                  Tus respuestas han sido guardadas correctamente.
-                </p>
+                
+                <div className="completed-content">
+                  <div className="university-badge">
+                    <Building2 className="university-badge-icon" />
+                    <span className="university-badge-name">{selectedUniversity.name}</span>
+                  </div>
+                  
+                  <h4 className="completed-subtitle">¡Felicitaciones por completar la evaluación!</h4>
+                  
+                  <div className="completion-stats">
+                    <div className="stat-item">
+                      <div className="stat-icon">
+                        <FileText />
+                      </div>
+                      <div className="stat-info">
+                        <span className="stat-number">{responses.length}</span>
+                        <span className="stat-label">Preguntas respondidas</span>
+                      </div>
+                    </div>
+                    
+                    <div className="stat-item">
+                      <div className="stat-icon">
+                        <Shield />
+                      </div>
+                      <div className="stat-info">
+                        <span className="stat-number">3</span>
+                        <span className="stat-label">Dimensiones evaluadas</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="completed-message-card">
+                    <MessageSquare className="message-icon" />
+                    <p className="completed-message">
+                      Tu contribución es invaluable para mejorar la sostenibilidad de 
+                      <strong> {selectedUniversity.name}</strong>. Los resultados han sido 
+                      guardados exitosamente en nuestro sistema.
+                    </p>
+                  </div>
+                  
+                  <div className="next-steps">
+                    <h5 className="next-steps-title">Próximos pasos:</h5>
+                    <ul className="next-steps-list">
+                      <li>Revisión del comité de sostenibilidad</li>
+                      <li>Elaboración del plan de mejora</li>
+                      <li>Seguimiento trimestral</li>
+                    </ul>
+                  </div>
+                </div>
                 
                 <div className="completed-actions">
                   <button
@@ -577,9 +645,10 @@ export default function Dashboard() {
                       setFinished(false)
                       setIsEvaluationMode(false)
                     }}
-                    className="action-button primary-button"
+                    className="action-button primary-button completed-btn"
                   >
-                    Volver al Dashboard
+                    <Home className="btn-icon" />
+                    Volver al Dashboard Principal
                   </button>
                 </div>
               </div>
@@ -630,6 +699,7 @@ export default function Dashboard() {
                     <button
                       onClick={() => {
                         setSelectedUniversity(null)
+                        setUniversitySearchTerm('')
                       }}
                       className="change-university-button"
                     >

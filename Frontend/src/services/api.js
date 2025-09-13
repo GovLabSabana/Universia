@@ -48,13 +48,23 @@ export const authAPI = {
 }
 
 export const universityAPI = {
-  getAll: () => api.get('/universities'),
+  getAll: () => api.get('/universities', {
+    params: { include_scores: true }
+  }),
 }
 
 export const formAPI = {
   getQuestionById: (id) => api.get(`/questions/${id}`),
   getDimensions: () => api.get('/dimensions'),
   createEvaluation: (data) => api.post('/evaluations', data),
+}
+
+export const statisticsAPI = {
+  getAverages: () => api.get('/evaluations/averages'),
+  getRanking: (dimensionId) =>
+    api.get('/evaluations/ranking', {
+      params: { dimension: dimensionId },
+    }),
 }
 
 export { api }

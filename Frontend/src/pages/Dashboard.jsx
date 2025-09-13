@@ -4,11 +4,13 @@ import Header from '../components/Header';
 import UniversitySearch from '../components/UniversitySearch';
 import SelectedUniversity from '../components/SelectedUniversity';
 import GlobalStatistics from '../components/GlobalStatistics'
+import EvaluationForm from "../components/EvaluationForm";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [universities, setUniversities] = useState([]);
   const [selectedUniversity, setSelectedUniversity] = useState(null);
+  const [activeEvaluation, setActiveEvaluation] = useState(null); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -74,12 +76,12 @@ export default function Dashboard() {
   const handleSelectUniversity = (university) => setSelectedUniversity(university);
   const handleDeselectUniversity = () => setSelectedUniversity(null);
 
-  const handleStartEvaluation = () => {
-    if (!selectedUniversity) {
-      alert('Por favor, selecciona una universidad primero');
-      return;
-    }
-    console.log('Iniciando evaluación para:', selectedUniversity.name);
+  const handleStartEvaluation = (universityId, dimensionId) => {
+    setActiveEvaluation({ universityId, dimensionId });
+  };
+
+  const handleExitEvaluation = () => {
+    setActiveEvaluation(null);
   };
 
   if (loading) {
@@ -96,7 +98,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header user={user} onLogout={handleLogout} />
-      
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
@@ -113,19 +115,32 @@ export default function Dashboard() {
           </p>
         </div>
 
-        <GlobalStatistics />
-
-        {!selectedUniversity ? (
-          <UniversitySearch 
-            universities={universities} 
-            onSelectUniversity={handleSelectUniversity} 
+        {/* ======================== */}
+        {/* Vista condicional */}
+        {/* ======================== */}
+        {activeEvaluation ? (
+          <EvaluationForm
+            universityId={activeEvaluation.universityId}
+            dimensionId={activeEvaluation.dimensionId}
+            onExit={handleExitEvaluation}
           />
         ) : (
-          <SelectedUniversity 
-            university={selectedUniversity}
-            onDeselect={handleDeselectUniversity}
-            onStartEvaluation={handleStartEvaluation}
-          />
+          <>
+            <GlobalStatistics />
+
+            {!selectedUniversity ? (
+              <UniversitySearch 
+                universities={universities} 
+                onSelectUniversity={handleSelectUniversity} 
+              />
+            ) : (
+              <SelectedUniversity 
+                university={selectedUniversity}
+                onDeselect={handleDeselectUniversity}
+                onStartEvaluation={handleStartEvaluation}
+              />
+            )}
+          </>
         )}
       </main>
     </div>

@@ -84,9 +84,9 @@ const SelectedUniversity = ({ university, onDeselect, onStartEvaluation }) => {
       </div>
 
       <button
-        onClick={onStartEvaluation}
+        onClick={() => onStartEvaluation(university.id, 1)}
         className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 flex items-center justify-center transition-colors"
-      >
+        >
         <Star className="h-5 w-5 mr-2" />
         Iniciar Evaluación
       </button>

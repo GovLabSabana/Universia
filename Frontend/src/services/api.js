@@ -67,4 +67,10 @@ export const statisticsAPI = {
     }),
 }
 
+export const evaluationAPI = {
+  getQuestions: (dimensionId) => api.get(`/dimensions/${dimensionId}/questions`),
+
+  postEvaluation: (payload) => api.post("/evaluations", payload),
+};
+
 export { api }

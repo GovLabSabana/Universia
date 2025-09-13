@@ -35,7 +35,6 @@ const GlobalStatistics = () => {
         setLoading(true)
 
         const avgRes = await statisticsAPI.getAverages()
-        console.log('Average stats:', avgRes.data)
         setAverages(avgRes.data.data || [])
 
         const rankingData = {}

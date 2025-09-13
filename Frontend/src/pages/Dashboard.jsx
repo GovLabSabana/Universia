@@ -1,318 +1,423 @@
-import { useState, useEffect } from 'react'
-import { universityAPI, formAPI } from '../services/api'
-import { useAuth } from '../contexts/AuthContext'
-import { LogOut, User, Settings, Home, Plus, X, Star, MapPin, Building2, Leaf, Users, Shield, ChevronDown, ChevronUp, Filter, Eye, Calendar, MessageSquare, FileText, Search, ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react'
-import "../design/Dashboard.css"
-import toast from 'react-hot-toast'
+import React, { useState, useEffect } from 'react'
+import { LogOut, User, Home, X, Star, MapPin, Building2, Leaf, Users, Shield, Search, CheckCircle, AlertCircle } from 'lucide-react'
 
-export default function Dashboard() {
-  const { user, logout } = useAuth()
-  const [showUserMenu, setShowUserMenu] = useState(false)
-  const [showCreateForm, setShowCreateForm] = useState(false)
-  
-  // Estados para evaluación secuencial
-  const [universitySearchTerm, setUniversitySearchTerm] = useState('')
-  const [showUniversityDropdown, setShowUniversityDropdown] = useState(false)
-  const [selectedUniversity, setSelectedUniversity] = useState(null)
-  const [currentQuestionId, setCurrentQuestionId] = useState(1)
-  const [currentQuestion, setCurrentQuestion] = useState(null)
-  const [dimensions, setDimensions] = useState([])
-  const [dimensionMap, setDimensionMap] = useState({})
-  const [responses, setResponses] = useState([])
-  const [currentDimensionId, setCurrentDimensionId] = useState(null)
-  const [finished, setFinished] = useState(false)
-  const [isEvaluationMode, setIsEvaluationMode] = useState(false)
-  const [comments, setComments] = useState("") // Estado para comentarios generales
-  
-  // Estados para el filtro de búsqueda general
-  const [searchTerm, setSearchTerm] = useState('')
-  
-  const [newUniversity, setNewUniversity] = useState({
-    name: '',
-    city: '',
-    department: ''
-  })
+// =======================
+// CONFIGURACIÓN API
+// =======================
+const API_BASE_URL = 'https://universia-production.up.railway.app'
 
-  const [universities, setUniversities] = useState([])
+// Función helper para hacer requests con autenticación
+const makeRequest = async (endpoint, options = {}) => {
+  const token = localStorage.getItem('access_token')
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': token ? `Bearer ${token}` : '',
+        ...options.headers
+      }
+    })
+    
+    // Si hay error 401, limpiar storage y redirigir a login
+    if (response.status === 401) {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('expires_at')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
+      throw new Error('No autorizado')
+    }
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('Error en request:', error)
+    throw error
+  }
+}
 
+// =======================
+// SERVICIOS API
+// =======================
+const authAPI = {
+  login: (credentials) => makeRequest('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(credentials)
+  }),
+  register: (userData) => makeRequest('/auth/signup', {
+    method: 'POST',
+    body: JSON.stringify(userData)
+  }),
+  getProfile: () => makeRequest('/auth/user'),
+  logout: () => makeRequest('/auth/logout', { method: 'POST' }),
+}
+
+const universityAPI = {
+  getAll: () => makeRequest('/universities'),
+}
+
+const dimensionAPI = {
+  getAll: () => makeRequest('/dimensions'),
+  getQuestions: (dimensionId) => makeRequest(`/dimensions/${dimensionId}/questions`),
+}
+
+const questionAPI = {
+  getById: (id) => makeRequest(`/questions/${id}`),
+}
+
+const evaluationAPI = {
+  create: (data) => makeRequest('/evaluations', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  getUserEvaluations: () => makeRequest('/evaluations'),
+  getAverages: () => makeRequest('/evaluations/averages'),
+  getRanking: (dimensionId = null) => {
+    const params = dimensionId ? `?dimension=${dimensionId}` : ''
+    return makeRequest(`/evaluations/ranking${params}`)
+  }
+}
+
+// =======================
+// HOOK DE AUTENTICACIÓN
+// =======================
+const useAuth = () => {
+  const [user, setUser] = useState(null)
+  
   useEffect(() => {
-    const fetchUniversities = async () => {
+    const storedUser = localStorage.getItem('user')
+    if (storedUser) {
       try {
-        const response = await universityAPI.getAll()
-        setUniversities(response.data.data || [])
-      } catch (error) {
-        console.error("Error cargando universidades:", error)
-        toast.error("Error al cargar universidades")
+        setUser(JSON.parse(storedUser))
+      } catch (e) {
+        console.error('Error parsing user data:', e)
       }
     }
+  }, [])
+  
+  const logout = async () => {
+    try {
+      await authAPI.logout()
+    } catch (error) {
+      console.error('Error during logout:', error)
+    } finally {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('expires_at')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
+    }
+  }
+  
+  return { user, logout }
+}
 
-    fetchUniversities()
+// =======================
+// COMPONENTE DASHBOARD
+// =======================
+export default function Dashboard() {
+  const { user, logout } = useAuth()
+  
+  // Estados principales
+  const [universities, setUniversities] = useState([])
+  const [dimensions, setDimensions] = useState([])
+  const [userEvaluations, setUserEvaluations] = useState([])
+  const [averages, setAverages] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  
+  // Estados de UI
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const [selectedUniversity, setSelectedUniversity] = useState(null)
+  const [universitySearchTerm, setUniversitySearchTerm] = useState('')
+  const [showUniversityDropdown, setShowUniversityDropdown] = useState(false)
+  
+  // Estados de evaluación
+  const [isEvaluationMode, setIsEvaluationMode] = useState(false)
+  const [currentDimensionIndex, setCurrentDimensionIndex] = useState(0)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [currentQuestions, setCurrentQuestions] = useState([])
+  const [currentResponses, setCurrentResponses] = useState([])
+  const [evaluationComplete, setEvaluationComplete] = useState(false)
+  const [comments, setComments] = useState('')
+  const [submittingEvaluation, setSubmittingEvaluation] = useState(false)
+
+  // Verificar autenticación al montar
+  useEffect(() => {
+    const token = localStorage.getItem('access_token')
+    if (!token) {
+      window.location.href = '/login'
+    }
   }, [])
 
-  // Cargar dimensiones
+  // Cargar datos iniciales
   useEffect(() => {
-    formAPI.getDimensions()
-      .then(res => {
-        setDimensions(res.data.data || [])
-        const map = {}
-        res.data.data.forEach(dim => {
-          map[dim.id] = dim.name
-        })
-        setDimensionMap(map)
-      })
-      .catch(() => {
-        toast.error("Error al cargar dimensiones")
-      })
-  }, [])
-
-  // Cargar pregunta actual
-  useEffect(() => {
-    if (!selectedUniversity || !isEvaluationMode) return
+    const loadInitialData = async () => {
+      try {
+        setLoading(true)
+        setError('')
+        
+        // Cargar datos en paralelo
+        const [universitiesRes, dimensionsRes, evaluationsRes, averagesRes] = await Promise.all([
+          universityAPI.getAll(),
+          dimensionAPI.getAll(),
+          evaluationAPI.getUserEvaluations(),
+          evaluationAPI.getAverages()
+        ])
+        
+        // Manejar diferentes estructuras de respuesta del API
+        setUniversities(universitiesRes?.data || universitiesRes || [])
+        setDimensions(dimensionsRes?.data || dimensionsRes || [])
+        setUserEvaluations(evaluationsRes?.data || evaluationsRes || [])
+        setAverages(averagesRes?.data || averagesRes || [])
+        
+      } catch (err) {
+        console.error('Error cargando datos iniciales:', err)
+        if (err.message.includes('401')) {
+          setError('Tu sesión ha expirado. Serás redirigido al login...')
+          setTimeout(() => {
+            window.location.href = '/login'
+          }, 2000)
+        } else {
+          setError('Error al cargar los datos. Por favor, intenta recargar la página.')
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
     
-    formAPI.getQuestionById(currentQuestionId)
-      .then(res => {
-        if (res.data?.success) {
-          setCurrentQuestion(res.data.data)
-          // Si cambiamos de dimensión, enviar las respuestas de la dimensión anterior
-          if (currentDimensionId && res.data.data.dimension_id !== currentDimensionId) {
-            submitEvaluation(responses, currentDimensionId)
-          }
-          setCurrentDimensionId(res.data.data.dimension_id)
-        } else {
-          // No hay más preguntas, enviar las respuestas de la última dimensión
-          if (responses.length > 0 && currentDimensionId) {
-            submitEvaluation(responses, currentDimensionId).then(() => {
-              setFinished(true)
-              setIsEvaluationMode(false)
-            })
-          } else {
-            setFinished(true)
-            setIsEvaluationMode(false)
-          }
-        }
-      })
-      .catch(() => {
-        // Error al cargar pregunta, enviar respuestas si hay
-        if (responses.length > 0 && currentDimensionId) {
-          submitEvaluation(responses, currentDimensionId).then(() => {
-            setFinished(true)
-            setIsEvaluationMode(false)
-          })
-        } else {
-          setFinished(true)
+    loadInitialData()
+  }, [])
+
+  // Cargar preguntas de la dimensión actual
+  useEffect(() => {
+    const loadQuestions = async () => {
+      if (isEvaluationMode && dimensions.length > 0 && currentDimensionIndex < dimensions.length) {
+        try {
+          const currentDimension = dimensions[currentDimensionIndex]
+          const response = await dimensionAPI.getQuestions(currentDimension.id)
+          setCurrentQuestions(response?.data || response || [])
+          setCurrentQuestionIndex(0)
+        } catch (err) {
+          console.error('Error cargando preguntas:', err)
+          setError('Error al cargar las preguntas. Por favor, intenta nuevamente.')
           setIsEvaluationMode(false)
         }
-      })
-  }, [currentQuestionId, selectedUniversity, isEvaluationMode])
+      }
+    }
+    
+    loadQuestions()
+  }, [isEvaluationMode, currentDimensionIndex, dimensions])
 
-  // Manejar respuesta seleccionada
-  const handleAnswer = (score) => {
-    if (!currentQuestion) return
-
-    const newResponse = { question_id: currentQuestion.id, score }
-    const newResponses = [...responses, newResponse]
-    setResponses(newResponses)
-
-    // Verificar si cambia de dimensión en la siguiente pregunta
-    const nextQuestionId = currentQuestionId + 1
-
-    formAPI.getQuestionById(nextQuestionId)
-      .then(res => {
-        if (res.data?.success) {
-          const nextDimId = res.data.data.dimension_id
-          if (nextDimId !== currentDimensionId) {
-            // Enviar evaluación por dimensión antes de continuar
-            submitEvaluation(newResponses, currentDimensionId).then(() => {
-              setResponses([])
-              setCurrentQuestionId(nextQuestionId)
-            })
-          } else {
-            setCurrentQuestionId(nextQuestionId)
-          }
-        } else {
-          // No hay más preguntas, enviar evaluación de la dimensión actual
-          submitEvaluation(newResponses, currentDimensionId).then(() => {
-            setFinished(true)
-            setIsEvaluationMode(false)
-          })
-        }
-      })
-      .catch(() => {
-        // No hay más preguntas, enviar evaluación de la dimensión actual
-        submitEvaluation(newResponses, currentDimensionId).then(() => {
-          setFinished(true)
-          setIsEvaluationMode(false)
-        })
-      })
+  // Funciones de evaluación
+  const startEvaluation = () => {
+    if (!selectedUniversity) {
+      alert('Por favor, selecciona una universidad primero')
+      return
+    }
+    
+    setIsEvaluationMode(true)
+    setCurrentDimensionIndex(0)
+    setCurrentQuestionIndex(0)
+    setCurrentResponses([])
+    setEvaluationComplete(false)
+    setComments('')
+    setError('')
   }
 
-  // Enviar evaluación por dimensión
-  const submitEvaluation = async (responsesToSend, dimensionId) => {
-    if (!selectedUniversity || responsesToSend.length === 0) return
+  const handleAnswer = async (score) => {
+    const currentQuestion = currentQuestions[currentQuestionIndex]
+    const newResponse = { 
+      question_id: currentQuestion.id, 
+      score: score 
+    }
+    const updatedResponses = [...currentResponses, newResponse]
+    setCurrentResponses(updatedResponses)
+    
+    // Verificar si es la última pregunta de la dimensión
+    if (currentQuestionIndex === currentQuestions.length - 1) {
+      try {
+        setSubmittingEvaluation(true)
+        // Enviar evaluación de la dimensión actual
+        await submitDimensionEvaluation(updatedResponses)
+        
+        // Verificar si hay más dimensiones
+        if (currentDimensionIndex < dimensions.length - 1) {
+          setCurrentDimensionIndex(currentDimensionIndex + 1)
+          setCurrentResponses([])
+        } else {
+          // Evaluación completada
+          setEvaluationComplete(true)
+          setIsEvaluationMode(false)
+          // Recargar datos para mostrar nuevos promedios
+          await reloadUserData()
+        }
+      } catch (err) {
+        console.error('Error al guardar evaluación:', err)
+        setError('Error al guardar la evaluación. Por favor, intenta nuevamente.')
+      } finally {
+        setSubmittingEvaluation(false)
+      }
+    } else {
+      setCurrentQuestionIndex(currentQuestionIndex + 1)
+    }
+  }
+
+  const submitDimensionEvaluation = async (responses) => {
+    const currentDimension = dimensions[currentDimensionIndex]
     
     const payload = {
       university_id: selectedUniversity.id,
-      dimension_id: dimensionId,
-      responses: responsesToSend,
-      comments: comments
+      dimension_id: currentDimension.id,
+      responses: responses,
+      comments: comments || ''
     }
     
     try {
-      await formAPI.createEvaluation(payload)
-      toast.success(`Evaluación guardada para dimensión ${dimensionMap[dimensionId]}`)
-      return true
-    } catch (error) {
-      console.error("Error al guardar evaluación:", error)
-      toast.error("Error al guardar evaluación")
-      return false
+      await evaluationAPI.create(payload)
+      console.log(`Evaluación guardada para dimensión ${currentDimension.name}`)
+    } catch (err) {
+      console.error('Error guardando evaluación:', err)
+      throw err
     }
   }
 
-  const getFilteredUniversitiesForSelection = () => {
-    if (!universitySearchTerm.trim()) return []
-    
-    const searchLower = universitySearchTerm.toLowerCase().trim()
-    return universities.filter(uni => 
-      uni.name.toLowerCase().includes(searchLower) ||
-      uni.city.toLowerCase().includes(searchLower) ||
-      uni.department.toLowerCase().includes(searchLower)
-    ).slice(0, 5) 
-  }
-  
-  // Definición de dimensiones y criterios según el modelo
-  const evaluationDimensions = {
-    'Ambiental': {
-      icon: <Leaf className="w-4 h-4" />,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50'
-    },
-    'Social': {
-      icon: <Users className="w-4 h-4" />,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50'
-    },
-    'Gobernanza': {
-      icon: <Shield className="w-4 h-4" />,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50'
-    }
-  }
-  
-  // Definición de niveles de puntuación
-  const scoreDescriptions = {
-    1: { 
-      label: 'Inexistente', 
-      description: 'No se implementa este criterio', 
-      colorClass: 'score-red', 
-      bgColorClass: 'score-bg-red' 
-    },
-    2: { 
-      label: 'Inicial/Piloto', 
-      description: 'Proyectos aislados o pruebas piloto', 
-      colorClass: 'score-orange', 
-      bgColorClass: 'score-bg-orange' 
-    },
-    3: { 
-      label: 'Parcialmente implementado', 
-      description: 'Implementación limitada en algunas áreas', 
-      colorClass: 'score-yellow', 
-      bgColorClass: 'score-bg-yellow' 
-    },
-    4: { 
-      label: 'Consolidado', 
-      description: 'Implementación integral con seguimiento', 
-      colorClass: 'score-blue', 
-      bgColorClass: 'score-bg-blue' 
-    },
-    5: { 
-      label: 'Excelente/Referente', 
-      description: 'Implementación ejemplar con resultados medibles', 
-      colorClass: 'score-green', 
-      bgColorClass: 'score-bg-green' 
+  const reloadUserData = async () => {
+    try {
+      const [evaluationsRes, averagesRes] = await Promise.all([
+        evaluationAPI.getUserEvaluations(),
+        evaluationAPI.getAverages()
+      ])
+      
+      setUserEvaluations(evaluationsRes?.data || evaluationsRes || [])
+      setAverages(averagesRes?.data || averagesRes || [])
+    } catch (err) {
+      console.error('Error recargando datos:', err)
     }
   }
 
-  // Función para iniciar evaluación secuencial
-  const startSequentialEvaluation = () => {
-    if (universities.length === 0) {
-      alert('Primero debes crear al menos una Institución para evaluar')
-      return
-    }
-    
-    if (!selectedUniversity) {
-      alert('Debes seleccionar una Institución para evaluar')
-      return
-    }
-    
-    setCurrentQuestionId(1)
-    setResponses([])
-    setComments("")
-    setFinished(false)
-    setIsEvaluationMode(true)
-  }
-
-  const handleLogout = () => {
-    logout()
-  }
-
+  // Funciones de utilidad
   const getUserNameFromEmail = (email) => {
     if (!email) return 'Usuario'
-    return email.split('@')[0]
+    const name = email.split('@')[0]
+    return name.charAt(0).toUpperCase() + name.slice(1)
   }
 
-  const renderStars = (score) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star 
-        key={i} 
-        className={`star ${i < score ? 'star-filled' : 'star-empty'}`}
-      />
-    ))
+  const getFilteredUniversities = () => {
+    if (!universitySearchTerm.trim()) return []
+    
+    const searchLower = universitySearchTerm.toLowerCase()
+    return universities.filter(uni => 
+      uni.name?.toLowerCase().includes(searchLower) ||
+      uni.city?.toLowerCase().includes(searchLower) ||
+      uni.department?.toLowerCase().includes(searchLower)
+    ).slice(0, 5)
+  }
+
+  const getDimensionStats = (dimensionName) => {
+    // Buscar en promedios globales
+    const globalAvg = averages.find(avg => 
+      avg.dimension_name === dimensionName || avg.dimension?.name === dimensionName
+    )
+    
+    // Buscar evaluaciones del usuario para esta dimensión y universidad
+    const userEvals = userEvaluations.filter(evaluation => {
+      const evalDimName = evaluation.dimension?.name || evaluation.dimensions?.name
+      return evalDimName === dimensionName && evaluation.university_id === selectedUniversity?.id
+    })
+    
+    return {
+      globalAverage: globalAvg?.average_score || 0,
+      globalEvaluations: globalAvg?.total_evaluations || 0,
+      userEvaluated: userEvals.length > 0,
+      userScore: userEvals.length > 0 ? calculateUserScore(userEvals[0]) : 0
+    }
+  }
+
+  const calculateUserScore = (evaluation) => {
+    const responses = evaluation.evaluation_responses || evaluation.responses || []
+    if (responses.length === 0) return 0
+    
+    const total = responses.reduce((sum, response) => sum + (response.score || 0), 0)
+    return (total / responses.length).toFixed(1)
+  }
+
+  const getOverallProgress = () => {
+    if (!selectedUniversity || dimensions.length === 0) {
+      return { completed: 0, total: dimensions.length, percentage: 0 }
+    }
+    
+    const completedDimensions = dimensions.filter(dimension => {
+      return userEvaluations.some(evaluation => {
+        const evalDimName = evaluation.dimension?.name || evaluation.dimensions?.name
+        return evalDimName === dimension.name && evaluation.university_id === selectedUniversity.id
+      })
+    }).length
+    
+    return {
+      completed: completedDimensions,
+      total: dimensions.length,
+      percentage: dimensions.length > 0 ? Math.round((completedDimensions / dimensions.length) * 100) : 0
+    }
+  }
+
+  // Configuración de dimensiones
+  const dimensionConfig = {
+    'Governance': { icon: <Shield className="w-4 h-4" />, color: 'text-purple-600', bgColor: 'bg-purple-50' },
+    'Social': { icon: <Users className="w-4 h-4" />, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+    'Environmental': { icon: <Leaf className="w-4 h-4" />, color: 'text-green-600', bgColor: 'bg-green-50' }
+  }
+
+  // Pantalla de carga
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando datos...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="dashboard-container">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="header">
-        <div className="header-content">
-          <div className="header-nav">
-            <div className="logo-container">
-              <div className="logo-icon">
-                <Home />
-              </div>
-              <h1 className="logo-text">EvalúaSostenible</h1>
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <Home className="h-8 w-8 text-blue-600 mr-3" />
+              <h1 className="text-xl font-bold text-gray-900">EvalúaSostenible</h1>
             </div>
-
-            <div className="user-menu">
+            
+            <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="user-button"
+                className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 transition-colors"
               >
-                <div className="user-avatar">
-                  <User />
-                </div>
-                <span className="user-name">
-                  {getUserNameFromEmail(user?.email)}
-                </span>
+                <User className="h-5 w-5" />
+                <span>{getUserNameFromEmail(user?.email)}</span>
               </button>
-
+              
               {showUserMenu && (
-                <div className="dropdown-menu">
-                  <div className="dropdown-header">
-                    <p className="dropdown-username">
-                      {getUserNameFromEmail(user?.email)}
-                    </p>
-                    <p className="dropdown-email">{user?.email}</p>
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                  <div className="px-4 py-2 text-sm text-gray-500 border-b">
+                    {user?.email}
                   </div>
-                  
-                  <div className="dropdown-logout">
-                    <button 
-                      onClick={handleLogout}
-                      className="dropdown-button"
-                    >
-                      <LogOut />
-                      Cerrar sesión
-                    </button>
-                  </div>
+                  <button
+                    onClick={logout}
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Cerrar sesión
+                  </button>
                 </div>
               )}
             </div>
@@ -320,398 +425,311 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <main className="main-content">
-        <div className="container">
-          <div className="welcome-section">
-            <h2 className="welcome-title">
-              ¡Bienvenido {getUserNameFromEmail(user?.email)}!
-            </h2>
-            <p className="welcome-subtitle">Sistema de Evaluación de Sostenibilidad para Instituciones de Educación Superior Colombianas</p>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Mensaje de error global */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4 flex items-center">
+            <AlertCircle className="h-5 w-5 mr-2" />
+            {error}
           </div>
+        )}
 
-          {/* Estadísticas por dimensión */}
-          <div className="stats-grid">
-            {Object.entries(evaluationDimensions).map(([dimension, config]) => {
-              // En una implementación real, estos datos vendrían de la API
-              const stats = {
-                count: Math.floor(Math.random() * 20),
-                avgScore: (Math.random() * 5).toFixed(1),
-                completionPercentage: Math.floor(Math.random() * 100),
-                universitiesEvaluated: Math.floor(Math.random() * 10)
-              }
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            ¡Bienvenido {getUserNameFromEmail(user?.email)}!
+          </h2>
+          <p className="text-gray-600">
+            Sistema de Evaluación de Sostenibilidad para Instituciones de Educación Superior Colombianas
+          </p>
+        </div>
+
+        {/* Selección de Universidad */}
+        {!selectedUniversity && !isEvaluationMode && (
+          <div className="bg-white rounded-lg shadow p-6 mb-8">
+            <h3 className="text-lg font-medium mb-4">Selecciona tu Institución</h3>
+            
+            <div className="relative">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Busca tu institución por nombre, ciudad o departamento..."
+                  value={universitySearchTerm}
+                  onChange={(e) => {
+                    setUniversitySearchTerm(e.target.value)
+                    setShowUniversityDropdown(e.target.value.length > 0)
+                  }}
+                  onFocus={() => setShowUniversityDropdown(universitySearchTerm.length > 0)}
+                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              
+              {showUniversityDropdown && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                  {getFilteredUniversities().length > 0 ? (
+                    getFilteredUniversities().map(uni => (
+                      <button
+                        key={uni.id}
+                        onClick={() => {
+                          setSelectedUniversity(uni)
+                          setUniversitySearchTerm(uni.name)
+                          setShowUniversityDropdown(false)
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b last:border-b-0 transition-colors"
+                      >
+                        <div className="font-medium">{uni.name}</div>
+                        <div className="text-sm text-gray-500 flex items-center mt-1">
+                          <MapPin className="h-3 w-3 mr-1" />
+                          {uni.city}, {uni.department}
+                        </div>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-4 py-3 text-gray-500">
+                      No se encontraron universidades. Intenta con otro término de búsqueda.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            
+            {universities.length === 0 && !loading && (
+              <div className="mt-4 text-sm text-gray-500">
+                No hay universidades disponibles en este momento.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Universidad Seleccionada */}
+        {selectedUniversity && !isEvaluationMode && !evaluationComplete && (
+          <div className="bg-white rounded-lg shadow p-6 mb-8">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="text-lg font-medium mb-2 flex items-center">
+                  <Building2 className="h-5 w-5 mr-2" />
+                  {selectedUniversity.name}
+                </h3>
+                <p className="text-gray-600 flex items-center">
+                  <MapPin className="h-4 w-4 mr-1" />
+                  {selectedUniversity.city}, {selectedUniversity.department}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedUniversity(null)
+                  setUniversitySearchTerm('')
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Progreso de evaluación */}
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-700">Progreso de evaluación</span>
+                <span className="text-sm text-gray-500">
+                  {getOverallProgress().completed}/{getOverallProgress().total} dimensiones
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${getOverallProgress().percentage}%` }}
+                ></div>
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                {getOverallProgress().percentage}% completado
+              </p>
+            </div>
+
+            <button
+              onClick={startEvaluation}
+              disabled={getOverallProgress().percentage === 100}
+              className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+            >
+              <Star className="h-5 w-5 mr-2" />
+              {getOverallProgress().percentage === 100 ? 'Evaluación Completada' : 'Iniciar/Continuar Evaluación'}
+            </button>
+          </div>
+        )}
+
+        {/* Dashboard de estadísticas */}
+        {selectedUniversity && getOverallProgress().percentage > 0 && !isEvaluationMode && !evaluationComplete && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {dimensions.map(dimension => {
+              const config = dimensionConfig[dimension.name] || dimensionConfig['Governance']
+              const stats = getDimensionStats(dimension.name)
               
               return (
-                <div key={dimension} className={`stat-card ${config.bgColor}`}>
-                  <div className="stat-header">
-                    <div className={`stat-icon ${config.color}`}>
+                <div key={dimension.id} className={`rounded-lg p-6 ${config.bgColor}`}>
+                  <div className="flex items-center mb-4">
+                    <div className={`${config.color} mr-3`}>
                       {config.icon}
                     </div>
-                    <div className="stat-info">
-                      <h3 className="stat-title">{dimension}</h3>
-                      <p className="stat-subtitle">{stats.count} evaluaciones</p>
-                    </div>
+                    <h3 className="text-lg font-medium text-gray-900">{dimension.name}</h3>
                   </div>
-                  <div className="stat-metrics">
-                    <div className="stat-score">
-                      <span className="stat-score-number">{stats.avgScore}</span>
-                      <span className="stat-score-text">Promedio</span>
-                    </div>
-                    <div className="stat-completion">
-                      <div className="completion-bar">
-                        <div 
-                          className="completion-fill" 
-                          style={{ width: `${stats.completionPercentage}%` }}
-                        ></div>
-                      </div>
-                      <div className="completion-info">
-                        <span className="completion-percentage">{stats.completionPercentage}%</span>
-                        <span className="completion-text">Completado</span>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Tu puntuación</span>
+                        <span className="text-lg font-bold text-gray-900">
+                          {stats.userEvaluated ? stats.userScore : 'N/A'}
+                        </span>
                       </div>
                     </div>
-                    <div className="stat-detail">
-                      <span className="detail-text">
-                        {stats.universitiesEvaluated}/{universities.length} Instituciones evaluadas
-                      </span>
+                    
+                    <div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-600">Promedio global</span>
+                        <span className="text-sm text-gray-500">
+                          {stats.globalAverage.toFixed(1)}
+                        </span>
+                      </div>
                     </div>
+                    
+                    <div className="text-xs text-gray-500">
+                      {stats.globalEvaluations} evaluaciones globales
+                    </div>
+                    
+                    {!stats.userEvaluated && (
+                      <div className="text-xs text-orange-600 font-medium">
+                        Pendiente de evaluar
+                      </div>
+                    )}
                   </div>
                 </div>
               )
             })}
           </div>
+        )}
 
-          <div className="action-buttons">
-            <button
-              onClick={startSequentialEvaluation}
-              className="action-button score-button"
-              disabled={isEvaluationMode || !selectedUniversity}
-            >
-              <Star />
-              {!selectedUniversity ? 'Selecciona tu Institución' : 
-              isEvaluationMode ? 'Evaluación en Curso' : 'Iniciar Evaluación Secuencial'}
-            </button>
-          </div>
+        {/* Modo de evaluación */}
+        {isEvaluationMode && currentQuestions.length > 0 && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-lg font-medium">
+                  Evaluación: {dimensions[currentDimensionIndex]?.name}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Pregunta {currentQuestionIndex + 1} de {currentQuestions.length}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  if (confirm('¿Estás seguro de que quieres salir? Tu progreso en esta dimensión se perderá.')) {
+                    setIsEvaluationMode(false)
+                    setCurrentResponses([])
+                  }
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
-          {/* Progreso general de evaluación */}
-          {isEvaluationMode && (
-            <div className="evaluation-progress-section sticky-progress">
-              <div className="progress-card">
-                <h3 className="progress-title">Progreso de Evaluación</h3>
-                <div className="progress-info">
-                  <div className="progress-bar-container">
-                    <div className="progress-bar">
-                      <div 
-                        className="progress-fill" 
-                        style={{ width: `${((currentQuestionId - 1) / 50) * 100}%` }}
-                      ></div>
-                    </div>
-                    <span className="progress-text">
-                      Pregunta {currentQuestionId}
-                    </span>
-                  </div>
-                  <div className="completed-count">
-                    <CheckCircle className="completed-icon" />
-                    {responses.length} respuestas completadas
-                  </div>
-                </div>
+            <div className="mb-6">
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${((currentQuestionIndex) / currentQuestions.length) * 100}%` }}
+                ></div>
               </div>
             </div>
-          )}
 
-          {/* Selección de universidad */}
-          {!isEvaluationMode && !selectedUniversity && (
-            <div className="university-selection-section">
-              <div className="selection-container">
-                <h3 className="selection-title">Selecciona tu Institución</h3>
-                <p className="selection-subtitle">Busca y escoge la Institución a la que perteneces</p>
-                
-                <div className="university-search-wrapper">
-                  <div className="search-input-wrapper">
-                    <Search className="search-icon" />
-                    <input
-                      type="text"
-                      placeholder="Escribe el nombre de tu institución o ciudad..."
-                      value={universitySearchTerm}
-                      onChange={(e) => {
-                        setUniversitySearchTerm(e.target.value)
-                        setShowUniversityDropdown(e.target.value.length > 0)
-                      }}
-                      onFocus={() => setShowUniversityDropdown(universitySearchTerm.length > 0)}
-                      className="university-search-input"
-                    />
-                    {universitySearchTerm && (
-                      <button
-                        onClick={() => {
-                          setUniversitySearchTerm('')
-                          setShowUniversityDropdown(false)
-                        }}
-                        className="search-clear"
-                      >
-                        <X />
-                      </button>
-                    )}
-                  </div>
-                  
-                  {showUniversityDropdown && (
-                    <div className="university-dropdown">
-                      {getFilteredUniversitiesForSelection().length > 0 ? (
-                        getFilteredUniversitiesForSelection().map(uni => (
-                          <button
-                            key={uni.id}
-                            onClick={() => {
-                              setSelectedUniversity(uni)
-                              setUniversitySearchTerm(uni.name)
-                              setShowUniversityDropdown(false)
-                            }}
-                            className="university-option"
-                          >
-                            <div className="university-option-content">
-                              <h4 className="university-option-name">{uni.name}</h4>
-                              <p className="university-option-location">
-                                <MapPin className="location-icon-small" />
-                                {uni.city}, {uni.department}
-                              </p>
-                            </div>
-                          </button>
-                        ))
-                      ) : (
-                        <div className="no-results">
-                          <p>No se encontraron universidades</p>
-                          <p className="no-results-hint">Intenta con otros términos de búsqueda</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Formulario de evaluación secuencial */}
-          {isEvaluationMode && currentQuestion && (
-            <div className="form-container">
-              <div className="form-header">
-                <div>
-                  <h3 className="form-title">Evaluación Secuencial</h3>
-                  <p className="evaluation-progress-text">
-                    Pregunta {currentQuestionId} - Dimensión: {dimensionMap[currentDimensionId]}
-                  </p>
-                </div>
-                <button 
-                  onClick={() => {
-                    // Si hay respuestas pendientes, enviarlas antes de salir
-                    if (responses.length > 0 && currentDimensionId) {
-                      submitEvaluation(responses, currentDimensionId).then(() => {
-                        setIsEvaluationMode(false)
-                        setFinished(false)
-                      })
-                    } else {
-                      setIsEvaluationMode(false)
-                      setFinished(false)
-                    }
-                  }} 
-                  className="close-button"
-                  title="Salir de evaluación"
-                >
-                  <X />
-                </button>
-              </div>
+            <div className="mb-8">
+              <h4 className="text-lg font-medium mb-4">
+                {currentQuestions[currentQuestionIndex]?.text}
+              </h4>
               
-              {/* Información del criterio actual */}
-              <div className="current-evaluation-info">
-                <div className="evaluation-context">
-                  <h4 className="current-university">{selectedUniversity.name}</h4>
-                  <div className="current-location">
-                    <MapPin className="location-icon" />
-                    {selectedUniversity.city}, {selectedUniversity.department}
-                  </div>
+              {submittingEvaluation ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                  <p className="text-gray-600">Guardando respuesta...</p>
                 </div>
-                
-                <div className="dimension-section">
-                  <div className={`current-dimension-badge ${evaluationDimensions[dimensionMap[currentQuestion.dimension_id]]?.color}`}>
-                    {evaluationDimensions[dimensionMap[currentQuestion.dimension_id]]?.icon}
-                    <span>{dimensionMap[currentQuestion.dimension_id]}</span>
-                  </div>
-                </div>
-                
-                <div className="criterion-section">
-                  <h5 className="criterion-label">Criterio a evaluar:</h5>
-                  <p className="current-criterion">
-                    {currentQuestion.text}
-                  </p>
-                </div>
-              </div>
-
-              <div className="evaluation-form">
-                {/* Puntuación */}
-                <div className="form-group">
-                  <label className="form-label">Puntuación (1-5) *</label>
-                  <div className="score-options">
-                    {Object.entries(currentQuestion.scale_descriptions || scoreDescriptions).map(([score, label]) => (
-                      <label key={score} className="score-option">
-                        <input
-                          type="radio"
-                          name="score"
-                          value={score}
-                          onChange={() => handleAnswer(parseInt(score))}
-                          className="score-radio"
-                        />
-                        <div className="score-option-content">
-                          <div className="score-option-header">
-                            <span className="score-number">{score}</span>
-                            <span className="score-label">{label}</span>
-                          </div>
-                          <p className="score-description">{scoreDescriptions[score]?.description || ""}</p>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Mensaje de finalización */}
-          {finished && (
-            <div className="form-container completed-container">
-              <div className="form-header completed-header">
-                <div className="success-animation">
-                  <CheckCircle className="success-icon" />
-                  <div className="success-circle"></div>
-                </div>
-                <h3 className="form-title completed-title">¡Evaluación Completada con Éxito!</h3>
-              </div>
-              
-              <div className="completed-evaluation">
-                <div className="celebration-animation">
-                  <div className="confetti"></div>
-                  <div className="confetti"></div>
-                  <div className="confetti"></div>
-                  <div className="confetti"></div>
-                  <div className="confetti"></div>
-                </div>
-                
-                <div className="completed-content">
-                  <div className="university-badge">
-                    <Building2 className="university-badge-icon" />
-                    <span className="university-badge-name">{selectedUniversity.name}</span>
-                  </div>
-                  
-                  <h4 className="completed-subtitle">¡Felicitaciones por completar la evaluación!</h4>
-                  
-                  <div className="completion-stats">
-                    <div className="stat-item">
-                      <div className="stat-icon">
-                        <FileText />
-                      </div>
-                      <div className="stat-info">
-                        <span className="stat-number">{responses.length}</span>
-                        <span className="stat-label">Preguntas respondidas</span>
-                      </div>
-                    </div>
-                    
-                    <div className="stat-item">
-                      <div className="stat-icon">
-                        <Shield />
-                      </div>
-                      <div className="stat-info">
-                        <span className="stat-number">3</span>
-                        <span className="stat-label">Dimensiones evaluadas</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="completed-message-card">
-                    <MessageSquare className="message-icon" />
-                    <p className="completed-message">
-                      Tu contribución es invaluable para mejorar la sostenibilidad de 
-                      <strong> {selectedUniversity.name}</strong>. Los resultados han sido 
-                      guardados exitosamente en nuestro sistema.
-                    </p>
-                  </div>
-                  
-                  <div className="next-steps">
-                    <h5 className="next-steps-title">Próximos pasos:</h5>
-                    <ul className="next-steps-list">
-                      <li>Revisión del comité de sostenibilidad</li>
-                      <li>Elaboración del plan de mejora</li>
-                      <li>Seguimiento trimestral</li>
-                    </ul>
-                  </div>
-                </div>
-                
-                <div className="completed-actions">
-                  <button
-                    onClick={() => {
-                      setFinished(false)
-                      setIsEvaluationMode(false)
-                    }}
-                    className="action-button primary-button completed-btn"
-                  >
-                    <Home className="btn-icon" />
-                    Volver al Dashboard Principal
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Información de la universidad seleccionada */}
-          {!isEvaluationMode && selectedUniversity && !finished && (
-            <div className="content-card">
-              <h3 className="card-header">
-                <Building2 className="universities-icon" />
-                Mi Institución:
-              </h3>
-              
-              <div className="card-list">
-                <div className="selected-university-display">
-                  <div className="university-info-section">
-                    <h4 className="university-name">{selectedUniversity.name}</h4>
-                    <p className="university-location">
-                      <MapPin />
-                      {selectedUniversity.city}, {selectedUniversity.department}
-                    </p>
-                    
-                    <div className="university-completion">
-                      <div className="completion-bar-small">
-                        <div 
-                          className="completion-fill-small" 
-                          style={{ width: '0%' }}
-                        ></div>
-                      </div>
-                      <span className="completion-text-small">
-                        0% evaluado (0/50 criterios)
-                      </span>
-                    </div>
-                    
-                    <div className="university-stats">
-                      {Object.keys(evaluationDimensions).map(dimension => (
-                        <div key={dimension} className="university-stat">
-                          <span className="stat-dimension">{dimension}:</span>
-                          <span className="stat-value">N/A</span>
-                          <span className="stat-count">(0)</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="university-actions">
+              ) : (
+                <div className="space-y-3">
+                  {[
+                    { value: 1, label: 'Inexistente', description: 'No existe implementación' },
+                    { value: 2, label: 'Inicial/Piloto', description: 'Implementación piloto o inicial' },
+                    { value: 3, label: 'Parcialmente implementado', description: 'Implementación parcial' },
+                    { value: 4, label: 'Consolidado', description: 'Implementación consolidada' },
+                    { value: 5, label: 'Excelente/Referente', description: 'Implementación ejemplar' }
+                  ].map(option => (
                     <button
-                      onClick={() => {
-                        setSelectedUniversity(null)
-                        setUniversitySearchTerm('')
-                      }}
-                      className="change-university-button"
+                      key={option.value}
+                      onClick={() => handleAnswer(option.value)}
+                      className="w-full text-left p-4 border border-gray-300 rounded-md hover:border-blue-500 hover:bg-blue-50 transition-all"
                     >
-                      <X className="change-icon" />
-                      Cambiar Institución
+                      <div className="flex items-start">
+                        <span className="text-lg font-bold text-blue-600 mr-3 mt-1">{option.value}</span>
+                        <div>
+                          <div className="font-medium">{option.label}</div>
+                          <div className="text-sm text-gray-500">{option.description}</div>
+                        </div>
+                      </div>
                     </button>
-                  </div>
+                  ))}
                 </div>
-              </div>
+              )}
             </div>
-          )}
-        </div>
+
+            {/* Campo de comentarios opcional */}
+            <div className="border-t pt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Comentarios adicionales (opcional)
+              </label>
+              <textarea
+                value={comments}
+                onChange={(e) => setComments(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                rows="3"
+                placeholder="Agrega cualquier comentario adicional sobre esta dimensión..."
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Evaluación completada */}
+        {evaluationComplete && (
+          <div className="bg-white rounded-lg shadow p-8 text-center">
+            <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              ¡Evaluación Completada!
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Has completado exitosamente la evaluación de sostenibilidad para<br />
+              <span className="font-semibold">{selectedUniversity?.name}</span>
+            </p>
+            
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setEvaluationComplete(false)
+                  reloadUserData()
+                }}
+                className="w-full bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Ver Dashboard de Resultados
+              </button>
+              
+              <button
+                onClick={() => {
+                  setEvaluationComplete(false)
+                  setSelectedUniversity(null)
+                  setUniversitySearchTerm('')
+                }}
+                className="w-full bg-gray-100 text-gray-700 px-6 py-3 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Evaluar Otra Universidad
+              </button>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   )

@@ -3,7 +3,6 @@ import { Building2, MapPin, X, Star, Shield, Users, Leaf } from 'lucide-react';
 
 const SelectedUniversity = ({ university, onDeselect, onStartEvaluation }) => {
 
-  // Ajustado a lo que devuelve el backend: Governanza, Social, Ambiental
   const dimensionConfig = {
     'Gobernanza': { icon: <Shield className="h-4 w-4" />, color: 'text-purple-700', bgColor: 'bg-purple-50', borderColor: 'border-purple-200' },
     'Social': { icon: <Users className="h-4 w-4" />, color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' },
@@ -43,7 +42,6 @@ const SelectedUniversity = ({ university, onDeselect, onStartEvaluation }) => {
         </button>
       </div>
 
-      {/* Estadísticas de evaluación */}
       <div className="mb-6">
         <h4 className="text-md font-medium mb-3">Estadísticas de Evaluación</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

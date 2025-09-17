@@ -48,9 +48,10 @@ export const authAPI = {
 }
 
 export const universityAPI = {
-  getAll: () => api.get('/universities', {
-    params: { include_scores: true }
-  }),
+  getAll: () =>
+    api.get('/universities', {
+      params: { include_scores: true },
+    }),
 }
 
 export const formAPI = {
@@ -68,9 +69,33 @@ export const statisticsAPI = {
 }
 
 export const evaluationAPI = {
-  getQuestions: (dimensionId) => api.get(`/dimensions/${dimensionId}/questions`),
+  getQuestions: (dimensionId) =>
+    api.get(`/dimensions/${dimensionId}/questions`),
 
-  postEvaluation: (payload) => api.post("/evaluations", payload),
-};
+  postEvaluation: (payload) => api.post('/evaluations', payload),
+
+  // 🔹 ahora recibe el userId
+  getAll: async (userId) => {
+    try {
+      const response = await api.get('/evaluations', {
+        params: { user_id: userId },
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error obteniendo evaluaciones:', error)
+      throw error
+    }
+  },
+
+  delete: async (id) => {
+    try {
+      const response = await api.delete(`/evaluations/${id}`)
+      return response.data
+    } catch (error) {
+      console.error('Error eliminando evaluación:', error)
+      throw error
+    }
+  },
+}
 
 export { api }

@@ -33,7 +33,6 @@ const EvaluationForm = ({ universityId, dimensionId: initialDimensionId, onExit 
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  // Cargar preguntas de la dimensión actual
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
@@ -71,26 +70,28 @@ const EvaluationForm = ({ universityId, dimensionId: initialDimensionId, onExit 
       setSubmitting(true);
       setError(null);
       setSuccess(null);
-
+  
       await evaluationAPI.postEvaluation({
         university_id: universityId,
         dimension_id: dimensionId,
         responses,
         comments,
       });
-
-      // Si no es la última dimensión, pasar a la siguiente
+  
       if (dimensionId < 3) {
         setSuccess(`¡Dimensión ${dimensionId} enviada con éxito! Continuando con la siguiente...`);
         setTimeout(() => {
           setDimensionId(dimensionId + 1);
         }, 1500);
       } else {
-        // Finaliza después de la dimensión 3
         setSuccess("¡Evaluación completa en todas las dimensiones!");
         setTimeout(() => {
-          onExit(); // volver al dashboard
-        }, 2000);
+          if (onFinish) {
+            onFinish(); 
+          } else if (onExit) {
+            onExit();
+          }
+        }, 1000);
       }
     } catch (err) {
       console.error(err);
@@ -103,7 +104,6 @@ const EvaluationForm = ({ universityId, dimensionId: initialDimensionId, onExit 
       setSubmitting(false);
     }
   };
-
   if (loading) return <p className="text-center">Cargando preguntas...</p>;
 
   const config = dimensionConfig[dimensionId] || {};
@@ -116,7 +116,6 @@ const EvaluationForm = ({ universityId, dimensionId: initialDimensionId, onExit 
         Evaluación — {config.name}
       </h2>
 
-      {/* Barra de progreso */}
       <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
         <div
           className="bg-green-500 h-2 rounded-full"
@@ -127,7 +126,6 @@ const EvaluationForm = ({ universityId, dimensionId: initialDimensionId, onExit 
         Pregunta {currentIndex + 1} de {questions.length}
       </p>
 
-      {/* Pregunta actual */}
       {currentQ ? (
         <div className="mb-4">
           <p className="font-medium mb-2">{currentQ.text}</p>
@@ -147,7 +145,6 @@ const EvaluationForm = ({ universityId, dimensionId: initialDimensionId, onExit 
         <p className="text-gray-600">No hay más preguntas.</p>
       )}
 
-      {/* Comentarios (solo al final) */}
       {currentIndex === questions.length - 1 && (
         <textarea
           value={comments}
@@ -157,7 +154,6 @@ const EvaluationForm = ({ universityId, dimensionId: initialDimensionId, onExit 
         />
       )}
 
-      {/* Botón enviar (solo al final) */}
       {currentIndex === questions.length - 1 && (
         <button
           onClick={handleSubmit}
@@ -168,11 +164,9 @@ const EvaluationForm = ({ universityId, dimensionId: initialDimensionId, onExit 
         </button>
       )}
 
-      {/* Mensajes */}
       {error && <p className="text-red-500 mt-4">{error}</p>}
       {success && <p className="text-green-600 mt-4">{success}</p>}
 
-      {/* Botón para salir manualmente */}
       <button
         onClick={onExit}
         className="mt-6 px-4 py-2 text-gray-600 border rounded-lg hover:bg-gray-100"

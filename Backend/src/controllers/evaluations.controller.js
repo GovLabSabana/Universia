@@ -321,6 +321,50 @@ export const createOrUpdateEvaluation = async (req, res) => {
       }
     }
 
+    // Verificar si el usuario ya tiene una universidad asignada
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("assigned_university_id")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (profileError) {
+      return sendError(res, "DB_ERROR", profileError.message);
+    }
+
+    // Si no existe el perfil, crearlo con la universidad asignada
+    if (!profileData) {
+      const { error: createProfileError } = await supabase
+        .from("profiles")
+        .insert({
+          id: userId,
+          assigned_university_id: university_id
+        });
+
+      if (createProfileError) {
+        return sendError(res, "DB_ERROR", createProfileError.message);
+      }
+    }
+    // Si el perfil existe pero no tiene universidad asignada, asignarla
+    else if (!profileData.assigned_university_id) {
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ assigned_university_id: university_id })
+        .eq("id", userId);
+
+      if (updateError) {
+        return sendError(res, "DB_ERROR", updateError.message);
+      }
+    }
+    // Si ya tiene universidad asignada, validar que coincida
+    else if (profileData.assigned_university_id !== university_id) {
+      return res.status(403).json({
+        success: false,
+        error: "UNIVERSITY_MISMATCH",
+        message: "Solo puedes evaluar la universidad que tienes asignada"
+      });
+    }
+
     const { data: existingEvaluation, error: queryError } = await supabase
       .from("evaluations")
       .select("id")
@@ -356,7 +400,13 @@ export const createOrUpdateEvaluation = async (req, res) => {
       return sendError(res, "DB_ERROR", error.message);
     }
 
-    const responsesToInsert = responses.map(response => ({
+    // Filtrar duplicados por question_id (mantener el último valor)
+    const uniqueResponses = {};
+    responses.forEach(response => {
+      uniqueResponses[response.question_id] = response;
+    });
+
+    const responsesToInsert = Object.values(uniqueResponses).map(response => ({
       evaluation_id: evaluation.id,
       question_id: response.question_id,
       score: response.score
@@ -364,7 +414,9 @@ export const createOrUpdateEvaluation = async (req, res) => {
 
     const { error: responsesError } = await supabase
       .from("evaluation_responses")
-      .insert(responsesToInsert);
+      .upsert(responsesToInsert, {
+        onConflict: 'evaluation_id,question_id'
+      });
 
     if (responsesError) {
       return sendError(res, "DB_ERROR", responsesError.message);
@@ -457,6 +509,7 @@ export const deleteEvaluation = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
 
+    // Eliminar la evaluación
     const { error } = await supabase
       .from("evaluations")
       .delete()
@@ -465,6 +518,30 @@ export const deleteEvaluation = async (req, res) => {
 
     if (error) {
       return sendError(res, "DB_ERROR", error.message);
+    }
+
+    // Verificar si le quedan evaluaciones al usuario
+    const { data: remainingEvaluations, error: checkError } = await supabase
+      .from("evaluations")
+      .select("id")
+      .eq("user_id", userId);
+
+    if (checkError) {
+      console.error("Error checking remaining evaluations:", checkError);
+      // No fallar aquí, solo logear el error
+    }
+
+    // Si no tiene más evaluaciones, limpiar universidad asignada
+    if (!checkError && (!remainingEvaluations || remainingEvaluations.length === 0)) {
+      const { error: updateProfileError } = await supabase
+        .from("profiles")
+        .update({ assigned_university_id: null })
+        .eq("id", userId);
+
+      if (updateProfileError) {
+        console.error("Error clearing assigned university:", updateProfileError);
+        // No fallar aquí, solo logear el error
+      }
     }
 
     sendSuccess(res, null, "Evaluation deleted successfully");

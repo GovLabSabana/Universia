@@ -3,9 +3,11 @@ import { authAPI, universityAPI, evaluationAPI } from '../services/api';
 import Header from '../components/Header';
 import UniversitySearch from '../components/UniversitySearch';
 import SelectedUniversity from '../components/SelectedUniversity';
+import AssignedUniversity from '../components/AssignedUniversity';
 import GlobalStatistics from '../components/GlobalStatistics';
 import EvaluationForm from "../components/EvaluationForm";
 import UserEvaluations from '../components/UserEvaluations';
+import toast from 'react-hot-toast';
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -35,14 +37,57 @@ export default function Dashboard() {
     return Object.values(grouped);
   };
 
+  // Determinar próxima dimensión a evaluar
+  const getNextDimensionToEvaluate = (userEvaluations, assignedUniversity) => {
+    if (!assignedUniversity || !userEvaluations.length) return 1; // Empezar desde dimensión 1
+
+    // Obtener dimensiones ya evaluadas para la universidad asignada
+    const universityEvaluations = userEvaluations.find(
+      group => group.university_id === assignedUniversity.id
+    );
+
+    if (!universityEvaluations) return 1; // No hay evaluaciones, empezar desde 1
+
+    // Obtener IDs de dimensiones completadas
+    const completedDimensions = universityEvaluations.evaluations.map(
+      ev => ev.dimension_id || ev.dimensions?.id
+    );
+
+    // Las dimensiones son 1, 2, 3 (Gobernanza, Social, Ambiental)
+    const allDimensions = [1, 2, 3];
+
+    // Encontrar la primera dimensión no completada
+    const nextDimension = allDimensions.find(
+      dimId => !completedDimensions.includes(dimId)
+    );
+
+    return nextDimension || null; // null si todas están completadas
+  };
+
   // ======================
-  // Verificar autenticación
+  // Verificar autenticación y cargar perfil actualizado
   // ======================
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     if (!token) {
       window.location.href = '/login';
     } else {
+      // Cargar perfil actualizado del backend
+      loadUserProfile();
+    }
+  }, []);
+
+  const loadUserProfile = async () => {
+    try {
+      const response = await authAPI.getProfile();
+      if (response.data?.success) {
+        const userData = response.data.data;
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      // Fallback al localStorage si falla la llamada
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         try {
@@ -52,7 +97,7 @@ export default function Dashboard() {
         }
       }
     }
-  }, []);
+  };
 
   // ======================
   // Cargar universidades
@@ -142,7 +187,16 @@ export default function Dashboard() {
   const handleEvaluationFinished = async () => {
     await loadEvaluations(); // refrescar evaluaciones
     await loadUniversities(); // refrescar estadísticas/puntajes de universidades
+    await loadUserProfile(); // refrescar perfil del usuario (para universidad asignada)
     setActiveEvaluation(null); // regresar al dashboard
+
+    // Toast de bienvenida al dashboard
+    setTimeout(() => {
+      toast('¡De vuelta al dashboard! 🏠', {
+        duration: 2500,
+        icon: '📊',
+      });
+    }, 500);
   };
 
   // ======================
@@ -153,9 +207,14 @@ export default function Dashboard() {
       for (const ev of group.evaluations) {
         await evaluationAPI.delete(ev.id);
       }
+
+      // Actualizar lista de evaluaciones
       setEvaluations((prev) =>
         prev.filter((g) => g.university_id !== group.university_id)
       );
+
+      // Refrescar perfil del usuario (en caso de que se haya limpiado la universidad asignada)
+      await loadUserProfile();
     } catch (err) {
       console.error("Error eliminando evaluaciones:", err);
     }
@@ -191,9 +250,30 @@ export default function Dashboard() {
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             ¡Bienvenido {user ? user.email.split('@')[0] : 'Usuario'}!
           </h2>
-          <p className="text-gray-600">
+          <p className="text-gray-600 mb-4">
             Sistema de Evaluación de Sostenibilidad para Instituciones de Educación Superior Colombianas
           </p>
+
+          {/* Mostrar estado solo si no tiene universidad asignada */}
+          {user && !user.assigned_university && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800">
+                    Busca tu Universidad
+                  </h3>
+                  <p className="mt-1 text-sm text-yellow-700">
+                    Selecciona una universidad para comenzar tu evaluación. Una vez seleccionada, quedarás asignado a ella.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
   
@@ -205,23 +285,34 @@ export default function Dashboard() {
             universityId={activeEvaluation.universityId}
             dimensionId={activeEvaluation.dimensionId}
             onExit={handleExitEvaluation}
-            onFinish={handleEvaluationFinished} 
+            onFinish={handleEvaluationFinished}
           />
         ) : (
           <>
             <GlobalStatistics />
 
-            {!selectedUniversity ? (
-              <UniversitySearch
-                universities={universities}
-                onSelectUniversity={handleSelectUniversity}
-              />
-            ) : (
-              <SelectedUniversity
-                university={selectedUniversity}
-                onDeselect={handleDeselectUniversity}
+            {/* Lógica principal basada en universidad asignada */}
+            {user?.assigned_university ? (
+              // Usuario tiene universidad asignada: mostrar componente especial
+              <AssignedUniversity
+                university={user.assigned_university}
+                nextDimension={getNextDimensionToEvaluate(evaluations, user.assigned_university)}
                 onStartEvaluation={handleStartEvaluation}
               />
+            ) : (
+              // Usuario SIN universidad asignada: mostrar buscador o universidad seleccionada
+              !selectedUniversity ? (
+                <UniversitySearch
+                  universities={universities}
+                  onSelectUniversity={handleSelectUniversity}
+                />
+              ) : (
+                <SelectedUniversity
+                  university={selectedUniversity}
+                  onDeselect={handleDeselectUniversity}
+                  onStartEvaluation={handleStartEvaluation}
+                />
+              )
             )}
           </>
         )}

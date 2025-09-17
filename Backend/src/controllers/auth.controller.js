@@ -295,19 +295,52 @@ export const getUser = async (req, res) => {
       return sendError(res, "USER_NOT_FOUND", "User not found", 404);
     }
 
+    // Obtener información del perfil y universidad asignada
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select(`
+        assigned_university_id,
+        universities(
+          id,
+          name,
+          city,
+          department
+        )
+      `)
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError) {
+      console.error("Profile query error:", profileError);
+    }
+
+    const userResponse = {
+      id: user.id,
+      email: user.email,
+      email_confirmed_at: user.email_confirmed_at,
+      phone: user.phone,
+      last_sign_in_at: user.last_sign_in_at,
+      created_at: user.created_at,
+      updated_at: user.updated_at,
+      user_metadata: user.user_metadata,
+      app_metadata: user.app_metadata,
+    };
+
+    // Agregar información de universidad si existe
+    if (profileData && profileData.assigned_university_id) {
+      userResponse.assigned_university = {
+        id: profileData.universities.id,
+        name: profileData.universities.name,
+        city: profileData.universities.city,
+        department: profileData.universities.department
+      };
+    } else {
+      userResponse.assigned_university = null;
+    }
+
     sendSuccess(
       res,
-      {
-        id: user.id,
-        email: user.email,
-        email_confirmed_at: user.email_confirmed_at,
-        phone: user.phone,
-        last_sign_in_at: user.last_sign_in_at,
-        created_at: user.created_at,
-        updated_at: user.updated_at,
-        user_metadata: user.user_metadata,
-        app_metadata: user.app_metadata,
-      },
+      userResponse,
       "User retrieved successfully"
     );
   } catch (error) {

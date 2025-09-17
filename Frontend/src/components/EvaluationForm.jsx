@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { evaluationAPI } from "../services/api";
+import toast from 'react-hot-toast';
 
 const dimensionConfig = {
   1: {
@@ -57,7 +58,10 @@ const EvaluationForm = ({ universityId, dimensionId: initialDimensionId, onExit 
 
   const handleAnswer = (score) => {
     const currentQ = questions[currentIndex];
-    const newResponses = [...responses, { question_id: currentQ.id, score }];
+
+    // Filtrar respuestas existentes para esta pregunta y agregar la nueva
+    const filteredResponses = responses.filter(r => r.question_id !== currentQ.id);
+    const newResponses = [...filteredResponses, { question_id: currentQ.id, score }];
     setResponses(newResponses);
 
     if (currentIndex < questions.length - 1) {
@@ -77,29 +81,47 @@ const EvaluationForm = ({ universityId, dimensionId: initialDimensionId, onExit 
         responses,
         comments,
       });
-  
+
       if (dimensionId < 3) {
-        setSuccess(`¡Dimensión ${dimensionId} enviada con éxito! Continuando con la siguiente...`);
+        const currentDimension = dimensionConfig[dimensionId]?.name || `Dimensión ${dimensionId}`;
+        const nextDimension = dimensionConfig[dimensionId + 1]?.name || `Dimensión ${dimensionId + 1}`;
+
+        toast.success(`¡${currentDimension} completada! 🎉`, {
+          duration: 2000,
+          icon: '✅',
+        });
+
         setTimeout(() => {
+          toast(`Continuando con ${nextDimension}...`, {
+            duration: 1500,
+            icon: '➡️',
+          });
           setDimensionId(dimensionId + 1);
         }, 1500);
       } else {
-        setSuccess("¡Evaluación completa en todas las dimensiones!");
+        toast.success('¡Evaluación completa en todas las dimensiones! 🎊', {
+          duration: 3000,
+          icon: '🏆',
+        });
+
         setTimeout(() => {
           if (onFinish) {
-            onFinish(); 
+            onFinish();
           } else if (onExit) {
             onExit();
           }
-        }, 1000);
+        }, 2000);
       }
     } catch (err) {
       console.error(err);
-      if (err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else {
-        setError("Error al enviar la evaluación.");
-      }
+      const errorMessage = err.response?.data?.message || "Error al enviar la evaluación.";
+
+      toast.error(errorMessage, {
+        duration: 4000,
+        icon: '❌',
+      });
+
+      setError(errorMessage);
     } finally {
       setSubmitting(false);
     }

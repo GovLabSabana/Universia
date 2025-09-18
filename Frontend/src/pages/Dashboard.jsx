@@ -9,6 +9,7 @@ import EvaluationForm from "../components/EvaluationForm";
 import UserEvaluations from '../components/UserEvaluations';
 import toast from 'react-hot-toast';
 import '../design/Dashboard.css';
+import govlabLogo from '../assets/govlablogo.png';
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -279,14 +280,11 @@ export default function Dashboard() {
           <div className="welcome-section">
             <div className="logo-container">
               <div className="logo-card">
-                <div className="logo-main">
-                  <div className="logo-govlab">
-                    Govlab.
-                  </div>
-                </div>
-                <div className="logo-subtitle">
-                  Universidad de la Sabana
-                </div>
+                <img 
+                  src={govlabLogo} 
+                  alt="Govlab - Universidad de la Sabana" 
+                  className="logo-image"
+                />
               </div>
             </div>
 

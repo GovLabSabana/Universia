@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-export default function AI() {
+export default function Ai() {
   const navigate = useNavigate();
 
   return (

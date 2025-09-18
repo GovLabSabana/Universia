@@ -5,7 +5,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Compare from './pages/Compare'
-import AI from './pages/AI'
+import Ai from './pages/Ai'
 import LoadingSpinner from './components/LoadingSpinner'
 
 // Componente para proteger rutas
@@ -61,7 +61,7 @@ function App() {
             } />
             <Route path="/ai" element={
               <PrivateRoute>
-                <AI />
+                <Ai />
               </PrivateRoute>
             } />
             

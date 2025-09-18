@@ -107,7 +107,7 @@ export default function Dashboard() {
       const universitiesRes = await universityAPI.getAll();
       setUniversities(universitiesRes.data);
     } catch (err) {
-      console.error('Error cargando universidades:', err);
+      console.error('Error cargando instituciones', err);
     }
   };
 
@@ -192,9 +192,8 @@ export default function Dashboard() {
 
     // Toast de bienvenida al dashboard
     setTimeout(() => {
-      toast('¡De vuelta al dashboard! 🏠', {
-        duration: 2500,
-        icon: '📊',
+      toast('¡De vuelta al dashboard!', {
+        duration: 2500
       });
     }, 500);
   };
@@ -215,6 +214,10 @@ export default function Dashboard() {
 
       // Refrescar perfil del usuario (en caso de que se haya limpiado la universidad asignada)
       await loadUserProfile();
+
+      // Refrescar estadísticas globales
+      await loadUniversities();
+
     } catch (err) {
       console.error("Error eliminando evaluaciones:", err);
     }
@@ -265,10 +268,10 @@ export default function Dashboard() {
                 </div>
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-yellow-800">
-                    Busca tu Universidad
+                    Busca tu Institución
                   </h3>
                   <p className="mt-1 text-sm text-yellow-700">
-                    Selecciona una universidad para comenzar tu evaluación. Una vez seleccionada, quedarás asignado a ella.
+                    Selecciona una Institución para comenzar tu evaluación. Una vez seleccionada, quedarás asignado a ella.
                   </p>
                 </div>
               </div>

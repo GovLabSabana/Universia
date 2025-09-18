@@ -61,7 +61,7 @@ const UniversitySearch = ({ universities, onSelectUniversity }) => {
               ))
             ) : (
               <div className="px-4 py-3 text-gray-500">
-                No se encontraron universidades.
+                No se encontraron instituciones.
               </div>
             )}
           </div>
@@ -70,7 +70,7 @@ const UniversitySearch = ({ universities, onSelectUniversity }) => {
       
       {!hasUniversities && (
         <div className="mt-4 text-sm text-gray-500">
-          No hay universidades disponibles en este momento.
+          No hay instituciones disponibles en este momento.
         </div>
       )}
     </div>

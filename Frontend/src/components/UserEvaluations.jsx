@@ -6,7 +6,7 @@ const UserEvaluations = ({ evaluations = [], onDelete }) => {
     return (
       <div className="bg-white rounded-lg shadow p-6 mb-8">
         <h3 className="text-lg font-medium mb-4">Tus Evaluaciones</h3>
-        <p className="text-gray-500">No has evaluado ninguna universidad aún.</p>
+        <p className="text-gray-500">No has evaluado ninguna institución aún.</p>
       </div>
     );
   }
@@ -25,7 +25,7 @@ const UserEvaluations = ({ evaluations = [], onDelete }) => {
               <div>
                 <h4 className="font-semibold flex items-center">
                   <Building2 className="h-4 w-4 mr-2" />
-                  {uni.name || 'Universidad desconocida'}
+                  {uni.name || 'Institución desconocida'}
                 </h4>
                 <p className="text-gray-600 flex items-center">
                   <MapPin className="h-3 w-3 mr-1" />
@@ -35,7 +35,7 @@ const UserEvaluations = ({ evaluations = [], onDelete }) => {
               <button
                 onClick={() => onDelete(group)}
                 className="text-red-600 hover:text-red-800"
-                title="Eliminar todas las evaluaciones de esta universidad"
+                title="Eliminar todas las evaluaciones de esta Institución"
               >
                 <Trash2 className="h-5 w-5" />
               </button>

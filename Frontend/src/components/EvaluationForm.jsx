@@ -23,7 +23,7 @@ const dimensionConfig = {
   },
 };
 
-const EvaluationForm = ({ universityId, dimensionId: initialDimensionId, onExit }) => {
+const EvaluationForm = ({ universityId, dimensionId: initialDimensionId, onExit, onFinish  }) => {
   const [dimensionId, setDimensionId] = useState(initialDimensionId);
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -86,22 +86,19 @@ const EvaluationForm = ({ universityId, dimensionId: initialDimensionId, onExit 
         const currentDimension = dimensionConfig[dimensionId]?.name || `Dimensión ${dimensionId}`;
         const nextDimension = dimensionConfig[dimensionId + 1]?.name || `Dimensión ${dimensionId + 1}`;
 
-        toast.success(`¡${currentDimension} completada! 🎉`, {
-          duration: 2000,
-          icon: '✅',
+        toast.success(`¡${currentDimension} completada!`, {
+          duration: 2000
         });
 
         setTimeout(() => {
           toast(`Continuando con ${nextDimension}...`, {
-            duration: 1500,
-            icon: '➡️',
+            duration: 1500
           });
           setDimensionId(dimensionId + 1);
         }, 1500);
       } else {
-        toast.success('¡Evaluación completa en todas las dimensiones! 🎊', {
-          duration: 3000,
-          icon: '🏆',
+        toast.success('¡Evaluación completa en todas las dimensiones!', {
+          duration: 3000
         });
 
         setTimeout(() => {
@@ -117,8 +114,7 @@ const EvaluationForm = ({ universityId, dimensionId: initialDimensionId, onExit 
       const errorMessage = err.response?.data?.message || "Error al enviar la evaluación.";
 
       toast.error(errorMessage, {
-        duration: 4000,
-        icon: '❌',
+        duration: 4000
       });
 
       setError(errorMessage);

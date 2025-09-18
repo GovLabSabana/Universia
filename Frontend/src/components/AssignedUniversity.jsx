@@ -20,7 +20,7 @@ const AssignedUniversity = ({ university, nextDimension, onStartEvaluation }) =>
       <div className="mb-6">
         <div className="flex items-center mb-2">
           <Building2 className="h-5 w-5 mr-2 text-blue-600" />
-          <h3 className="text-lg font-medium text-gray-900">Universidad Asignada</h3>
+          <h3 className="text-lg font-medium text-gray-900">Institución Asignada</h3>
         </div>
         <h4 className="text-xl font-bold text-gray-900 mb-2">{university.name}</h4>
         <p className="text-gray-600 flex items-center">

@@ -17,7 +17,6 @@ import { useNavigate } from 'react-router-dom';
        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
          <div className="flex justify-between items-center h-16">
            <div className="flex items-center">
-             <Home className="h-8 w-8 text-blue-600 mr-3" />
              <h1 className="text-xl font-bold text-gray-900">EvalúaSostenible</h1>
            </div>
            
@@ -31,8 +30,8 @@ import { useNavigate } from 'react-router-dom';
              </button>
              
              {showUserMenu && (
-               <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
-                 <div className="px-4 py-2 text-sm text-gray-500 border-b">
+               <div className="absolute right-0 mt-2 w-55 bg-white rounded-md shadow-lg py-1 z-10">
+                 <div className="px-4 py-2 text-sm text-gray-500 border-b bg-blue-50">
                    {user?.email}
                  </div>
                 <button

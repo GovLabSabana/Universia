@@ -3,9 +3,27 @@ import { Building2, MapPin, Play, CheckCircle, Shield, Users, Leaf } from 'lucid
 
 const AssignedUniversity = ({ university, nextDimension, onStartEvaluation }) => {
   const dimensionConfig = {
-    1: { name: 'Gobernanza', icon: <Shield className="h-4 w-4" />, color: 'text-purple-700' },
-    2: { name: 'Social', icon: <Users className="h-4 w-4" />, color: 'text-blue-700' },
-    3: { name: 'Ambiental', icon: <Leaf className="h-4 w-4" />, color: 'text-green-700' }
+    1: { 
+      name: 'Gobernanza', 
+      icon: <Shield className="h-5 w-5" />, 
+      color: 'text-purple-600',
+      bg: 'bg-purple-50',
+      border: 'border-purple-200'
+    },
+    2: { 
+      name: 'Social', 
+      icon: <Users className="h-5 w-5" />, 
+      color: 'text-blue-600',
+      bg: 'bg-blue-50',
+      border: 'border-blue-200'
+    },
+    3: { 
+      name: 'Ambiental', 
+      icon: <Leaf className="h-5 w-5" />, 
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-50',
+      border: 'border-emerald-200'
+    }
   };
 
   const getDimensionStatus = (dimensionId) => {
@@ -15,54 +33,94 @@ const AssignedUniversity = ({ university, nextDimension, onStartEvaluation }) =>
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 mb-8">
+    <div className="bg-white rounded-2xl border border-slate-200 p-8">
       {/* Header de Universidad Asignada */}
-      <div className="mb-6">
-        <div className="flex items-center mb-2">
-          <Building2 className="h-5 w-5 mr-2 text-blue-600" />
-          <h3 className="text-lg font-medium text-gray-900">Institución Asignada</h3>
+      <div className="mb-8">
+        <div className="flex items-center space-x-3 mb-4">
+          <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+            <Building2 className="h-6 w-6 text-blue-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-slate-600">Universidad Asignada</h3>
+            <h4 className="text-2xl font-bold text-slate-900">{university.name}</h4>
+          </div>
         </div>
-        <h4 className="text-xl font-bold text-gray-900 mb-2">{university.name}</h4>
-        <p className="text-gray-600 flex items-center">
-          <MapPin className="h-4 w-4 mr-1" />
-          {university.city}, {university.department}
-        </p>
+        <div className="flex items-center text-slate-500 ml-13">
+          <MapPin className="h-4 w-4 mr-2" />
+          <span>{university.city}, {university.department}</span>
+        </div>
       </div>
 
       {/* Progreso de Evaluaciones */}
-      <div className="mb-6">
-        <h5 className="text-md font-medium mb-3 text-gray-900">Progreso de Evaluación</h5>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="mb-8">
+        <h5 className="text-lg font-semibold text-slate-900 mb-6">Progreso de Evaluación</h5>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map(dimensionId => {
             const config = dimensionConfig[dimensionId];
             const status = getDimensionStatus(dimensionId);
-
+            
             return (
               <div
                 key={dimensionId}
-                className={`p-3 rounded-lg border ${
-                  status === 'completed' ? 'bg-green-50 border-green-200' :
-                  status === 'next' ? 'bg-blue-50 border-blue-200' :
-                  'bg-gray-50 border-gray-200'
+                className={`relative p-6 rounded-xl border transition-all duration-200 ${
+                  status === 'completed' 
+                    ? 'bg-emerald-50 border-emerald-200' :
+                  status === 'next' 
+                    ? `${config.bg} ${config.border} ring-2 ring-blue-100` :
+                    'bg-slate-50 border-slate-200'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className={config.color}>{config.icon}</div>
-                    <span className={`ml-2 font-medium ${config.color}`}>
-                      {config.name}
-                    </span>
+                {/* Indicador de estado */}
+                <div className="absolute top-4 right-4">
+                  {status === 'completed' && (
+                    <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center">
+                      <CheckCircle className="h-4 w-4 text-emerald-600" />
+                    </div>
+                  )}
+                  {status === 'next' && (
+                    <div className="w-3 h-3 bg-blue-600 rounded-full animate-pulse"></div>
+                  )}
+                  {status === 'pending' && (
+                    <div className="w-3 h-3 bg-slate-300 rounded-full"></div>
+                  )}
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    status === 'completed' 
+                      ? 'bg-emerald-100' :
+                    status === 'next' 
+                      ? config.bg :
+                      'bg-slate-100'
+                  }`}>
+                    <div className={
+                      status === 'completed' 
+                        ? 'text-emerald-600' :
+                      status === 'next' 
+                        ? config.color :
+                        'text-slate-400'
+                    }>
+                      {config.icon}
+                    </div>
                   </div>
                   <div>
-                    {status === 'completed' && (
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                    )}
-                    {status === 'next' && (
-                      <div className="h-3 w-3 bg-blue-600 rounded-full animate-pulse"></div>
-                    )}
-                    {status === 'pending' && (
-                      <div className="h-3 w-3 bg-gray-300 rounded-full"></div>
-                    )}
+                    <h6 className={`font-semibold ${
+                      status === 'completed' 
+                        ? 'text-emerald-700' :
+                      status === 'next' 
+                        ? config.color :
+                        'text-slate-500'
+                    }`}>
+                      {config.name}
+                    </h6>
+                    <p className="text-sm text-slate-500">
+                      {status === 'completed' 
+                        ? 'Completada' :
+                       status === 'next' 
+                        ? 'Siguiente' :
+                        'Pendiente'
+                      }
+                    </p>
                   </div>
                 </div>
               </div>
@@ -72,19 +130,19 @@ const AssignedUniversity = ({ university, nextDimension, onStartEvaluation }) =>
       </div>
 
       {/* Botón de Acción */}
-      <div>
+      <div className="border-t border-slate-200 pt-6">
         {nextDimension ? (
           <button
             onClick={() => onStartEvaluation(university.id, nextDimension)}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 flex items-center justify-center transition-colors"
+            className="w-full bg-blue-600 text-white py-4 px-6 rounded-xl hover:bg-blue-700 flex items-center justify-center transition-colors duration-200 font-semibold"
           >
-            <Play className="h-5 w-5 mr-2" />
+            <Play className="h-5 w-5 mr-3" />
             Continuar Evaluación - {dimensionConfig[nextDimension].name}
           </button>
         ) : (
-          <div className="w-full bg-green-100 text-green-800 py-3 px-4 rounded-md flex items-center justify-center">
-            <CheckCircle className="h-5 w-5 mr-2" />
-            ¡Evaluación Completada!
+          <div className="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 py-4 px-6 rounded-xl flex items-center justify-center">
+            <CheckCircle className="h-5 w-5 mr-3" />
+            <span className="font-semibold">Evaluación Completada</span>
           </div>
         )}
       </div>

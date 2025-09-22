@@ -94,9 +94,40 @@ app.use("/", dimensionsRoutes);
 app.use("/", questionsRoutes);
 app.use("/", evaluationsRoutes);
 
+// Basic authentication middleware for docs
+const basicAuth = (req, res, next) => {
+  const auth = req.headers.authorization;
+
+  if (!auth || !auth.startsWith("Basic ")) {
+    res.set("WWW-Authenticate", 'Basic realm="Documentation Access"');
+    return res.status(401).json({
+      success: false,
+      message: "Authentication required",
+    });
+  }
+
+  const credentials = Buffer.from(auth.slice(6), "base64").toString("utf-8");
+  const [username, password] = credentials.split(":");
+
+  if (
+    username === "admin" &&
+    password ===
+      "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
+  ) {
+    next();
+  } else {
+    res.set("WWW-Authenticate", 'Basic realm="Documentation Access"');
+    return res.status(401).json({
+      success: false,
+      message: "Invalid credentials",
+    });
+  }
+};
+
 if (swaggerDocument) {
   app.use(
     "/docs",
+    basicAuth,
     swaggerUi.serve,
     swaggerUi.setup(swaggerDocument, {
       explorer: true,

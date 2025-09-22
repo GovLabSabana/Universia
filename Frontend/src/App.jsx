@@ -86,13 +86,42 @@ function App() {
           </Routes>
           
           {/* Notificaciones toast */}
-          <Toaster 
+          <Toaster
             position="top-right"
             toastOptions={{
               duration: 4000,
               style: {
-                background: '#363636',
-                color: '#fff',
+                background: '#ffffff',
+                color: '#111827',
+                border: '2px solid #2563eb',
+                borderRadius: '8px',
+                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                fontFamily: 'Inter, system-ui, sans-serif',
+                fontSize: '14px',
+                fontWeight: '500',
+                maxWidth: '350px',
+              },
+              success: {
+                style: {
+                  background: '#ffffff',
+                  color: '#111827',
+                  border: '2px solid #10b981',
+                },
+                iconTheme: {
+                  primary: '#10b981',
+                  secondary: '#ffffff',
+                },
+              },
+              error: {
+                style: {
+                  background: '#ffffff',
+                  color: '#111827',
+                  border: '2px solid #ef4444',
+                },
+                iconTheme: {
+                  primary: '#ef4444',
+                  secondary: '#ffffff',
+                },
               },
             }}
           />

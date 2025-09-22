@@ -1,29 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { Search, MapPin } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { Search, MapPin, Building2 } from "lucide-react";
 
-const UniversitySearch = ({ universities, onSelectUniversity, resetSearch = false }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+const UniversitySearch = ({
+  universities,
+  onSelectUniversity,
+  resetSearch = false,
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
 
   // Efecto para limpiar el campo de búsqueda cuando sea necesario
   useEffect(() => {
     if (resetSearch) {
-      setSearchTerm('');
+      setSearchTerm("");
       setShowDropdown(false);
     }
   }, [resetSearch]);
 
   const getFilteredUniversities = () => {
     if (!searchTerm.trim()) return [];
-    
+
     const searchLower = searchTerm.toLowerCase();
     const universitiesData = universities.data || [];
-    
-    return universitiesData.filter(uni =>
-      uni.name?.toLowerCase().includes(searchLower) ||
-      uni.city?.toLowerCase().includes(searchLower) ||
-      uni.department?.toLowerCase().includes(searchLower)
-    ).slice(0, 5);
+
+    return universitiesData
+      .filter(
+        (uni) =>
+          uni.name?.toLowerCase().includes(searchLower) ||
+          uni.city?.toLowerCase().includes(searchLower) ||
+          uni.department?.toLowerCase().includes(searchLower)
+      )
+      .slice(0, 5);
   };
 
   const hasUniversities = universities.data && universities.data.length > 0;
@@ -31,7 +38,7 @@ const UniversitySearch = ({ universities, onSelectUniversity, resetSearch = fals
 
   const handleSelectUniversity = (uni) => {
     onSelectUniversity(uni);
-    setSearchTerm(''); // Limpiar el campo después de seleccionar
+    setSearchTerm(""); // Limpiar el campo después de seleccionar
     setShowDropdown(false);
   };
 
@@ -41,9 +48,21 @@ const UniversitySearch = ({ universities, onSelectUniversity, resetSearch = fals
         <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
           <Search className="h-5 w-5 text-blue-600" />
         </div>
-        <h3 className="text-xl font-bold text-slate-900">Selecciona tu Institución</h3>
+        <h3 className="text-xl font-bold text-slate-900">
+          Selecciona tu Institución
+        </h3>
       </div>
-      
+      <div className="text-center py-8">
+        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Building2 className="h-8 w-8 text-slate-400" />
+        </div>
+        <p className="text-slate-500 text-lg">
+          No has evaluado ninguna universidad aún.
+        </p>
+        <p className="text-slate-400 text-sm mt-2">
+          Selecciona una universidad para comenzar tu primera evaluación.
+        </p>
+      </div>
       <div className="relative">
         <div className="relative">
           <Search className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
@@ -63,11 +82,11 @@ const UniversitySearch = ({ universities, onSelectUniversity, resetSearch = fals
             className="pl-10 pr-4 py-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
           />
         </div>
-        
+
         {showDropdown && (
           <div className="absolute z-10 w-full mt-2 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
             {filteredUniversities.length > 0 ? (
-              filteredUniversities.map(uni => (
+              filteredUniversities.map((uni) => (
                 <button
                   key={uni.id}
                   onClick={() => handleSelectUniversity(uni)}
@@ -88,7 +107,7 @@ const UniversitySearch = ({ universities, onSelectUniversity, resetSearch = fals
           </div>
         )}
       </div>
-      
+
       {!hasUniversities && (
         <div className="mt-4 text-sm text-slate-500 text-center">
           No hay instituciones disponibles en este momento.

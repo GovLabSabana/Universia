@@ -1,15 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { authAPI, universityAPI, evaluationAPI } from '../services/api';
-import Header from '../components/Header';
-import UniversitySearch from '../components/UniversitySearch';
-import SelectedUniversity from '../components/SelectedUniversity';
-import AssignedUniversity from '../components/AssignedUniversity';
-import GlobalStatistics from '../components/GlobalStatistics';
+import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import govlabLogo from "../assets/govlablogo.png";
+import AssignedUniversity from "../components/AssignedUniversity";
 import EvaluationForm from "../components/EvaluationForm";
-import UserEvaluations from '../components/UserEvaluations';
-import toast from 'react-hot-toast';
-import '../design/Dashboard.css';
-import govlabLogo from '../assets/govlablogo.png';
+import GlobalStatistics from "../components/GlobalStatistics";
+import Header from "../components/Header";
+import SelectedUniversity from "../components/SelectedUniversity";
+import UniversitySearch from "../components/UniversitySearch";
+import "../design/Dashboard.css";
+import { authAPI, evaluationAPI, universityAPI } from "../services/api";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -18,20 +17,21 @@ export default function Dashboard() {
   const [activeEvaluation, setActiveEvaluation] = useState(null);
   const [evaluations, setEvaluations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   // ======================
   // Utils
   // ======================
   const groupEvaluationsByUniversity = (evaluations) => {
     const grouped = {};
-    evaluations.forEach(ev => {
-      const uniId = ev.university_id || ev.university?.id || ev.universities?.id;
+    evaluations.forEach((ev) => {
+      const uniId =
+        ev.university_id || ev.university?.id || ev.universities?.id;
       if (!grouped[uniId]) {
         grouped[uniId] = {
           university_id: uniId,
           university: ev.university || ev.universities || null,
-          evaluations: []
+          evaluations: [],
         };
       }
       grouped[uniId].evaluations.push(ev);
@@ -44,18 +44,18 @@ export default function Dashboard() {
     if (!assignedUniversity || !userEvaluations.length) return 1;
 
     const universityEvaluations = userEvaluations.find(
-      group => group.university_id === assignedUniversity.id
+      (group) => group.university_id === assignedUniversity.id
     );
 
     if (!universityEvaluations) return 1;
 
     const completedDimensions = universityEvaluations.evaluations.map(
-      ev => ev.dimension_id || ev.dimensions?.id
+      (ev) => ev.dimension_id || ev.dimensions?.id
     );
 
     const allDimensions = [1, 2, 3];
     const nextDimension = allDimensions.find(
-      dimId => !completedDimensions.includes(dimId)
+      (dimId) => !completedDimensions.includes(dimId)
     );
 
     return nextDimension || null;
@@ -65,9 +65,9 @@ export default function Dashboard() {
   // Verificar autenticación y cargar perfil actualizado
   // ======================
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
+    const token = localStorage.getItem("access_token");
     if (!token) {
-      window.location.href = '/login';
+      window.location.href = "/login";
     } else {
       loadUserProfile();
     }
@@ -79,16 +79,16 @@ export default function Dashboard() {
       if (response.data?.success) {
         const userData = response.data.data;
         setUser(userData);
-        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem("user", JSON.stringify(userData));
       }
     } catch (error) {
-      console.error('Error loading user profile:', error);
-      const storedUser = localStorage.getItem('user');
+      console.error("Error loading user profile:", error);
+      const storedUser = localStorage.getItem("user");
       if (storedUser) {
         try {
           setUser(JSON.parse(storedUser));
         } catch (e) {
-          console.error('Error parsing user data:', e);
+          console.error("Error parsing user data:", e);
         }
       }
     }
@@ -102,7 +102,7 @@ export default function Dashboard() {
       const universitiesRes = await universityAPI.getAll();
       setUniversities(universitiesRes.data);
     } catch (err) {
-      console.error('Error cargando instituciones', err);
+      console.error("Error cargando instituciones", err);
     }
   };
 
@@ -110,17 +110,19 @@ export default function Dashboard() {
     const loadInitialData = async () => {
       try {
         setLoading(true);
-        setError('');
+        setError("");
         await loadUniversities();
       } catch (err) {
-        console.error('Error cargando datos iniciales:', err);
+        console.error("Error cargando datos iniciales:", err);
         if (err.response?.status === 401) {
-          setError('Tu sesión ha expirado. Serás redirigido al login...');
+          setError("Tu sesión ha expirado. Serás redirigido al login...");
           setTimeout(() => {
-            window.location.href = '/login';
+            window.location.href = "/login";
           }, 2000);
         } else {
-          setError('Error al cargar los datos. Por favor, intenta recargar la página.');
+          setError(
+            "Error al cargar los datos. Por favor, intenta recargar la página."
+          );
         }
       } finally {
         setLoading(false);
@@ -136,7 +138,7 @@ export default function Dashboard() {
     try {
       if (!user?.id) return;
       const data = await evaluationAPI.getAll(user.id);
-      const parsed = Array.isArray(data) ? data : (data?.data || []);
+      const parsed = Array.isArray(data) ? data : data?.data || [];
       setEvaluations(groupEvaluationsByUniversity(parsed));
     } catch (err) {
       console.error("Error cargando evaluaciones:", err);
@@ -154,30 +156,33 @@ export default function Dashboard() {
     try {
       await authAPI.logout();
     } catch (err) {
-      console.error('Error during logout:', err);
+      console.error("Error during logout:", err);
     } finally {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
-      localStorage.removeItem('expires_at');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("expires_at");
+      localStorage.removeItem("user");
+      window.location.href = "/login";
     }
   };
 
   // ======================
   // Lógica de selección/evaluación
   // ======================
-  const handleSelectUniversity = (university) => setSelectedUniversity(university);
+  const handleSelectUniversity = (university) =>
+    setSelectedUniversity(university);
   const handleDeselectUniversity = () => setSelectedUniversity(null);
 
   const handleStartEvaluation = (universityId, dimensionId) => {
     // Guardar la universidad que se está evaluando
-    const universityBeingEvaluated = universities.data?.find(uni => uni.id === universityId);
-    
-    setActiveEvaluation({ 
-      universityId, 
+    const universityBeingEvaluated = universities.data?.find(
+      (uni) => uni.id === universityId
+    );
+
+    setActiveEvaluation({
+      universityId,
       dimensionId,
-      university: universityBeingEvaluated // Guardar referencia a la universidad
+      university: universityBeingEvaluated, // Guardar referencia a la universidad
     });
   };
 
@@ -188,19 +193,19 @@ export default function Dashboard() {
   const handleEvaluationFinished = async () => {
     // Primero, limpiar el estado de la universidad seleccionada
     setSelectedUniversity(null);
-    
+
     // Luego, recargar todos los datos
     await loadEvaluations();
     await loadUniversities();
     await loadUserProfile();
-    
+
     // Finalmente, cerrar el formulario de evaluación
     setActiveEvaluation(null);
-  
+
     // Toast de bienvenida al dashboard
     setTimeout(() => {
-      toast('¡De vuelta al dashboard!', {
-        duration: 2500
+      toast("¡De vuelta al dashboard!", {
+        duration: 2500,
       });
     }, 500);
   };
@@ -220,7 +225,6 @@ export default function Dashboard() {
 
       await loadUserProfile();
       await loadUniversities();
-
     } catch (err) {
       console.error("Error eliminando evaluaciones:", err);
     }
@@ -243,7 +247,7 @@ export default function Dashboard() {
   // ======================
   // RENDER CONDICIONAL PRINCIPAL
   // ======================
-  
+
   // Si hay evaluación activa, SOLO mostrar el formulario
   if (activeEvaluation) {
     return (
@@ -269,20 +273,16 @@ export default function Dashboard() {
       <Header user={user} onLogout={handleLogout} />
 
       <main className="dashboard-main">
-        {error && (
-          <div className="error-alert">
-            {error}
-          </div>
-        )}
+        {error && <div className="error-alert">{error}</div>}
 
         <div className="dashboard-sections">
           {/* Sección de bienvenida */}
           <div className="welcome-section">
             <div className="logo-container">
               <div className="logo-card">
-                <img 
-                  src={govlabLogo} 
-                  alt="Govlab - Universidad de la Sabana" 
+                <img
+                  src={govlabLogo}
+                  alt="Govlab - Universidad de la Sabana"
                   className="logo-image"
                 />
               </div>
@@ -290,22 +290,13 @@ export default function Dashboard() {
 
             <div className="welcome-content">
               <h2 className="welcome-title">
-                ¡Bienvenido {user ? user.email.split('@')[0] : 'Usuario'}!
+                ¡Bienvenido {user ? user.email.split("@")[0] : "Usuario"}!
               </h2>
               <p className="welcome-description">
-                Sistema de Evaluación de Sostenibilidad para Instituciones de comunicación iberoamericanas
+                Sistema de Evaluación de Sostenibilidad para Instituciones de
+                comunicación iberoamericanas
               </p>
             </div>
-          </div>
-
-          {/* Evaluaciones del usuario */}
-          <div className="evaluation-section">
-            <UserEvaluations evaluations={evaluations} onDelete={handleDeleteEvaluation} />
-          </div>
-
-          {/* Estadísticas globales */}
-          <div className="statistics-section">
-            <GlobalStatistics />
           </div>
 
           {/* Selector de universidad */}
@@ -313,23 +304,33 @@ export default function Dashboard() {
             {user?.assigned_university ? (
               <AssignedUniversity
                 university={user.assigned_university}
-                nextDimension={getNextDimensionToEvaluate(evaluations, user.assigned_university)}
+                nextDimension={getNextDimensionToEvaluate(
+                  evaluations,
+                  user.assigned_university
+                )}
+                evaluation={evaluations.find(
+                  (ev) => ev.university_id === user.assigned_university.id
+                )}
+                onDelete={handleDeleteEvaluation}
                 onStartEvaluation={handleStartEvaluation}
               />
+            ) : !selectedUniversity ? (
+              <UniversitySearch
+                universities={universities}
+                onSelectUniversity={handleSelectUniversity}
+              />
             ) : (
-              !selectedUniversity ? (
-                <UniversitySearch
-                  universities={universities}
-                  onSelectUniversity={handleSelectUniversity}
-                />
-              ) : (
-                <SelectedUniversity
-                  university={selectedUniversity}
-                  onDeselect={handleDeselectUniversity}
-                  onStartEvaluation={handleStartEvaluation}
-                />
-              )
+              <SelectedUniversity
+                university={selectedUniversity}
+                onDeselect={handleDeselectUniversity}
+                onStartEvaluation={handleStartEvaluation}
+              />
             )}
+          </div>
+
+          {/* Estadísticas globales */}
+          <div className="statistics-section">
+            <GlobalStatistics />
           </div>
         </div>
       </main>
